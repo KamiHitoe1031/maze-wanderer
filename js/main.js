@@ -6,6 +6,7 @@ import { GameState, GAME_STATE } from './game.js';
 import { Renderer } from './renderer.js';
 import { InputHandler, ACTION } from './input.js';
 import { UI } from './ui.js';
+import { ITEM_CATEGORY } from './item.js';
 
 class Game {
   constructor() {
@@ -16,6 +17,7 @@ class Game {
     this.gameState = null;
 
     this.isRunning = false;
+    this.inventoryBusy = false;
   }
 
   /**
@@ -45,6 +47,7 @@ class Game {
     window.debug = this.gameState.debug;
 
     this.isRunning = true;
+    this.inventoryBusy = false;
     this.render();
   }
 
@@ -54,10 +57,16 @@ class Game {
   update() {
     if (!this.isRunning) return;
     if (this.gameState.state !== GAME_STATE.PLAYING) return;
+    if (this.inventoryBusy) return;
 
     // 入力チェック
     if (this.input.hasAction()) {
       const { action, direction } = this.input.getAction();
+
+      if (action === ACTION.INVENTORY) {
+        this.openInventory();
+        return;
+      }
 
       if (action) {
         // アクション処理
@@ -74,6 +83,30 @@ class Game {
         // 描画
         this.render();
       }
+    }
+  }
+
+  /**
+   * インベントリを開く
+   */
+  async openInventory() {
+    if (this.inventoryBusy) return;
+    this.inventoryBusy = true;
+
+    const result = await this.ui.openInventory(this.gameState.player, this.gameState);
+
+    this.inventoryBusy = false;
+
+    if (result) {
+      const turnConsumed = this.gameState.processInventoryAction(result);
+
+      if (turnConsumed) {
+        this.gameState.processTurn();
+        this.renderer.updateVisibility(this.gameState.player, this.gameState.dungeon);
+      }
+
+      this.ui.updateStatus(this.gameState);
+      this.render();
     }
   }
 

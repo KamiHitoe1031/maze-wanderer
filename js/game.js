@@ -8,6 +8,17 @@ import { Player } from './player.js';
 import { MonsterManager } from './monster.js';
 import { Combat } from './combat.js';
 import { ACTION } from './input.js';
+import {
+  ITEM_CATEGORY,
+  createItem,
+  getItemDisplayName,
+  generateRandomItem,
+  placeItemsOnFloor,
+  applyGrassEffect,
+  applyFoodEffect,
+  applyScrollEffect,
+  applyEnhanceScroll
+} from './item.js';
 
 // ゲーム状態
 export const GAME_STATE = {
@@ -40,6 +51,10 @@ export class GameState {
     // モンスター管理
     this.monsterManager = new MonsterManager();
     this.monsterManager.initFloor(this.floor, this.dungeon, this.rng, this.player);
+
+    // フロアアイテム
+    this.floorItems = [];
+    placeItemsOnFloor(this.floor, this.dungeon, this.rng, this.floorItems);
 
     // 戦闘システム
     this.combat = new Combat(this.rng);
@@ -100,7 +115,7 @@ export class GameState {
         break;
 
       case ACTION.INVENTORY:
-        this.handleInventory();
+        // インベントリはmain.jsのUI側で処理
         break;
     }
 
@@ -126,9 +141,35 @@ export class GameState {
       const result = this.combat.playerAttack(this.player, monster);
       this.addMessage(result.message, result.hit ? 'damage' : 'info');
 
+      // 分裂チェック（攻撃が命中し、まだ生きている場合）
+      if (result.hit && monster.isAlive) {
+        const splitResult = this.monsterManager.handleSplit(monster, this.dungeon, this.player);
+        if (splitResult) {
+          this.addMessage(splitResult.message, 'info');
+        }
+      }
+
       if (result.killed) {
+        // 乗り移りチェック（亡霊武者・悪霊武者）
+        const possessResult = this.monsterManager.handlePossessOnDeath(monster, this.player);
+        if (possessResult) {
+          this.addMessage(possessResult.message, 'important');
+        }
+
         this.player.gainExp(result.exp);
         this.monsterManager.removeDeadMonsters();
+
+        // ドロップ判定（10%）
+        if (this.rng.chance(0.1)) {
+          const dropItem = generateRandomItem(this.floor, this.rng, {
+            x: monster.x,
+            y: monster.y,
+            onFloor: true
+          });
+          if (dropItem) {
+            this.floorItems.push(dropItem);
+          }
+        }
       }
 
       // 向きを更新
@@ -143,6 +184,15 @@ export class GameState {
 
     // 移動
     this.player.move(direction.dx, direction.dy);
+
+    // 移動先にアイテムがあるか通知
+    const itemOnFloor = this.floorItems.find(
+      it => it.x === this.player.x && it.y === this.player.y
+    );
+    if (itemOnFloor) {
+      this.addMessage(`足元に${getItemDisplayName(itemOnFloor)}がある。`, 'info');
+    }
+
     return true;
   }
 
@@ -150,10 +200,26 @@ export class GameState {
    * 攻撃処理（向いている方向）
    */
   handleAttack() {
+    // 攻撃対象を取得
+    const target = this.combat.getAttackTarget(this.player, this.player.direction, this.monsters);
     const result = this.combat.attackInDirection(this.player, this.monsters);
     this.addMessage(result.message, result.hit ? 'damage' : 'info');
 
-    if (result.killed) {
+    // 分裂チェック
+    if (target && result.hit && target.isAlive) {
+      const splitResult = this.monsterManager.handleSplit(target, this.dungeon, this.player);
+      if (splitResult) {
+        this.addMessage(splitResult.message, 'info');
+      }
+    }
+
+    if (result.killed && target) {
+      // 乗り移りチェック
+      const possessResult = this.monsterManager.handlePossessOnDeath(target, this.player);
+      if (possessResult) {
+        this.addMessage(possessResult.message, 'important');
+      }
+
       this.player.gainExp(result.exp);
       this.monsterManager.removeDeadMonsters();
     }
@@ -176,13 +242,41 @@ export class GameState {
     const px = this.player.x;
     const py = this.player.y;
 
+    // 足元のアイテムをチェック
+    const itemIndex = this.floorItems.findIndex(it => it.x === px && it.y === py);
+    if (itemIndex >= 0) {
+      const item = this.floorItems[itemIndex];
+
+      // お金の場合は直接加算
+      if (item.category === ITEM_CATEGORY.GOLD) {
+        this.player.gold += item.amount;
+        this.floorItems.splice(itemIndex, 1);
+        this.addMessage(`${item.amount}銭を拾った！`, 'info');
+        return true;
+      }
+
+      // インベントリ上限チェック
+      if (this.player.inventory.length >= this.player.maxInventory) {
+        this.addMessage('持ち物がいっぱいで拾えない！', 'info');
+        return false;
+      }
+
+      // 拾う
+      item.onFloor = false;
+      item.x = -1;
+      item.y = -1;
+      this.player.inventory.push(item);
+      this.floorItems.splice(itemIndex, 1);
+      this.addMessage(`${getItemDisplayName(item)}を拾った。`, 'info');
+      return true;
+    }
+
     // 階段チェック
     if (this.dungeon.map[py][px] === TILE.STAIRS) {
       this.descendStairs();
       return true;
     }
 
-    // アイテム拾い（Phase 2で実装）
     this.addMessage('足元には何もない。', 'info');
     return false;
   }
@@ -215,6 +309,10 @@ export class GameState {
     // モンスターを再配置
     this.monsterManager.initFloor(this.floor, this.dungeon, this.rng, this.player);
 
+    // アイテムを再配置
+    this.floorItems = [];
+    placeItemsOnFloor(this.floor, this.dungeon, this.rng, this.floorItems);
+
     if (this.onFloorChange) {
       this.onFloorChange(this.floor);
     }
@@ -230,16 +328,194 @@ export class GameState {
 
     if (tile === TILE.STAIRS) {
       this.addMessage('階段がある。', 'info');
-    } else {
-      this.addMessage('特に何もない。', 'info');
+      return;
     }
+
+    const item = this.floorItems.find(it => it.x === px && it.y === py);
+    if (item) {
+      this.addMessage(`足元に${getItemDisplayName(item)}がある。`, 'info');
+      return;
+    }
+
+    this.addMessage('特に何もない。', 'info');
   }
 
   /**
-   * インベントリを開く（Phase 2で実装）
+   * インベントリアクションを処理
+   * @returns {boolean} ターン消費したか
    */
-  handleInventory() {
-    this.addMessage('持ち物（未実装）', 'info');
+  processInventoryAction(result) {
+    if (!result) return false;
+
+    const { action, item, targetItem } = result;
+
+    switch (action) {
+      case 'equip':
+        return this.equipItem(item);
+
+      case 'unequip':
+        return this.unequipItem(item);
+
+      case 'use':
+        return this.useItem(item, targetItem);
+
+      case 'drop':
+        return this.dropItem(item);
+    }
+
+    return false;
+  }
+
+  /**
+   * 装備する
+   */
+  equipItem(item) {
+    if (item.category === ITEM_CATEGORY.WEAPON) {
+      // 現在装備中の武器があれば外す
+      if (this.player.weapon && this.player.weapon.cursed) {
+        this.addMessage('呪われていて外せない！', 'damage');
+        return false;
+      }
+      this.player.weapon = item;
+      this.addMessage(`${getItemDisplayName(item)}を装備した。`, 'info');
+      return true;
+    }
+
+    if (item.category === ITEM_CATEGORY.SHIELD) {
+      if (this.player.shield && this.player.shield.cursed) {
+        this.addMessage('呪われていて外せない！', 'damage');
+        return false;
+      }
+      this.player.shield = item;
+      this.addMessage(`${getItemDisplayName(item)}を装備した。`, 'info');
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * 装備を外す
+   */
+  unequipItem(item) {
+    if (item.cursed) {
+      this.addMessage('呪われていて外せない！', 'damage');
+      return false;
+    }
+
+    if (this.player.weapon === item) {
+      this.player.weapon = null;
+      this.addMessage(`${getItemDisplayName(item)}を外した。`, 'info');
+      return true;
+    }
+
+    if (this.player.shield === item) {
+      this.player.shield = null;
+      this.addMessage(`${getItemDisplayName(item)}を外した。`, 'info');
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * アイテムを使用
+   */
+  useItem(item, targetItem) {
+    const removeFromInventory = () => {
+      const idx = this.player.inventory.indexOf(item);
+      if (idx >= 0) this.player.inventory.splice(idx, 1);
+      // 装備中のものを消費した場合
+      if (this.player.weapon === item) this.player.weapon = null;
+      if (this.player.shield === item) this.player.shield = null;
+    };
+
+    let messages = [];
+
+    switch (item.category) {
+      case ITEM_CATEGORY.GRASS:
+        messages = applyGrassEffect(item, this.player, this);
+        removeFromInventory();
+        break;
+
+      case ITEM_CATEGORY.FOOD:
+        messages = applyFoodEffect(item, this.player);
+        removeFromInventory();
+        break;
+
+      case ITEM_CATEGORY.SCROLL:
+        if (item.effect === 'enhance' && targetItem) {
+          messages = applyEnhanceScroll(item, targetItem);
+          removeFromInventory();
+        } else if (item.effect === 'plating' && targetItem) {
+          targetItem.rustproof = true;
+          messages = [`${getItemDisplayName(targetItem)}に錆止めを付けた！`];
+          removeFromInventory();
+        } else {
+          messages = applyScrollEffect(item, this.player, this);
+          // 対象選択が必要な巻物はまだ消費しない
+          if (!messages.includes('_NEED_TARGET_EQUIP') && !messages.includes('_NEED_TARGET_ITEM')) {
+            removeFromInventory();
+          } else {
+            // 対象選択が必要 - UI側で処理
+            return false;
+          }
+        }
+        break;
+
+      default:
+        this.addMessage('それは使えない。', 'info');
+        return false;
+    }
+
+    for (const msg of messages) {
+      this.addMessage(msg, msg.includes('ダメージ') || msg.includes('下がった') ? 'damage' : 'info');
+    }
+
+    // 復活の種チェック: 使用後に死亡していないか
+    this.checkPlayerDeath();
+
+    return true;
+  }
+
+  /**
+   * アイテムを置く
+   */
+  dropItem(item) {
+    // 呪われた装備は外せない
+    if ((this.player.weapon === item || this.player.shield === item) && item.cursed) {
+      this.addMessage('呪われていて置けない！', 'damage');
+      return false;
+    }
+
+    // 装備中なら外す
+    if (this.player.weapon === item) this.player.weapon = null;
+    if (this.player.shield === item) this.player.shield = null;
+
+    // インベントリから除去
+    const idx = this.player.inventory.indexOf(item);
+    if (idx >= 0) this.player.inventory.splice(idx, 1);
+
+    // フロアに置く
+    item.x = this.player.x;
+    item.y = this.player.y;
+    item.onFloor = true;
+    this.floorItems.push(item);
+
+    this.addMessage(`${getItemDisplayName(item)}を足元に置いた。`, 'info');
+    return true;
+  }
+
+  /**
+   * プレイヤー死亡チェック（復活の種対応）
+   */
+  checkPlayerDeath() {
+    if (!this.player.isAlive && this.player.hasRevival) {
+      this.player.hasRevival = false;
+      this.player.hp = this.player.maxHp;
+      this.player.isAlive = true;
+      this.addMessage('復活の種の力で蘇った！', 'important');
+    }
   }
 
   /**
@@ -252,7 +528,8 @@ export class GameState {
     const results = this.monsterManager.processActions(
       this.player,
       this.dungeon,
-      this.combat
+      this.combat,
+      this
     );
 
     for (const result of results) {
@@ -261,7 +538,8 @@ export class GameState {
       }
     }
 
-    // プレイヤー死亡チェック
+    // プレイヤー死亡チェック（復活の種対応）
+    this.checkPlayerDeath();
     if (!this.player.isAlive) {
       this.state = GAME_STATE.GAME_OVER;
       this.addMessage('冒険は失敗に終わった...', 'important');
@@ -272,7 +550,9 @@ export class GameState {
     }
 
     // 満腹度減少（10ターンに1）
-    if (this.turnCount % 10 === 0) {
+    // 満腹の盾装備時は20ターンに1
+    const fullnessInterval = this.player.hasFullnessShield() ? 20 : 10;
+    if (this.turnCount % fullnessInterval === 0) {
       this.player.reduceFullness(1);
     }
 
@@ -286,9 +566,11 @@ export class GameState {
 
     // HP自然回復（部屋にいるとき）
     if (this.dungeon.isInRoom(this.player.x, this.player.y)) {
-      const healed = this.player.naturalHeal();
-      // 回復メッセージは省略
+      this.player.naturalHeal();
     }
+
+    // 状態異常ターン経過
+    this.player.tickStatusEffects();
 
     // モンスター自然発生
     this.monsterManager.tickSpawn(this.floor, this.dungeon, this.rng, this.player);
@@ -332,6 +614,14 @@ export class GameState {
       const pos = this.dungeon.getRandomWalkablePosition();
       if (pos) {
         this.monsterManager.spawn(id, pos.x, pos.y);
+      }
+    },
+
+    giveItem: (id, category) => {
+      const item = createItem(id, category);
+      if (item) {
+        this.player.inventory.push(item);
+        this.addMessage(`[DEBUG] ${getItemDisplayName(item)}を入手した。`, 'info');
       }
     }
   };

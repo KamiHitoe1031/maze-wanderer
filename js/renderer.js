@@ -53,8 +53,8 @@ export class Renderer {
     // マップ描画
     this.renderMap(gameState.dungeon);
 
-    // アイテム描画（将来用）
-    // this.renderItems(gameState.items);
+    // アイテム描画
+    this.renderItems(gameState.floorItems, gameState.dungeon);
 
     // モンスター描画
     this.renderMonsters(gameState.monsters, gameState.dungeon);
@@ -90,6 +90,29 @@ export class Renderer {
         const spriteKey = dungeon.getTileSpriteKey(mapX, mapY);
         this.spriteManager.draw(this.ctx, spriteKey, screenX, screenY);
       }
+    }
+  }
+
+  /**
+   * フロアアイテムを描画
+   */
+  renderItems(floorItems, dungeon) {
+    if (!floorItems) return;
+
+    for (const item of floorItems) {
+      // 探索済みでなければ表示しない
+      if (!dungeon.explored[item.y]?.[item.x]) continue;
+
+      const screenX = (item.x - this.cameraX) * this.tileSize;
+      const screenY = (item.y - this.cameraY) * this.tileSize;
+
+      // ビューポート内かチェック
+      if (screenX < 0 || screenX >= this.canvas.width ||
+          screenY < 0 || screenY >= this.canvas.height) {
+        continue;
+      }
+
+      this.spriteManager.draw(this.ctx, item.spriteKey, screenX, screenY);
     }
   }
 
