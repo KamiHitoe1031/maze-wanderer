@@ -1,6 +1,8 @@
 /**
- * ui.js - UI（メニュー・メッセージログ・ステータスバー）
+ * ui.js - UI（メニュー・メッセージログ・ステータスバー・インベントリ）
  */
+
+import { ITEM_CATEGORY, getItemDisplayName, applyGrassEffect, applyFoodEffect, applyScrollEffect, applyEnhanceScroll } from './item.js';
 
 export class UI {
   constructor() {
@@ -15,6 +17,14 @@ export class UI {
 
     // メッセージログ
     this.maxMessages = 5;
+
+    // インベントリUI
+    this.inventoryOpen = false;
+    this.inventoryOverlay = null;
+    this.selectedIndex = 0;
+    this.inventoryMode = 'main'; // 'main' | 'action' | 'enhance_target'
+    this.pendingScrollItem = null; // 強化巻物の対象選択待ち
+    this.resolveInventory = null;
   }
 
   /**
@@ -230,6 +240,312 @@ export class UI {
    */
   showStartMessage() {
     this.addMessage('霧幻の塔に足を踏み入れた。', 'important');
-    this.addMessage('操作: WASD/矢印で移動、Fで攻撃、Enterで階段を降りる', 'info');
+    this.addMessage('操作: WASD/矢印で移動、Fで攻撃、Iで持ち物、Enterで拾う/階段', 'info');
+  }
+
+  /**
+   * インベントリ画面を表示
+   * @returns {Promise<{action: string, item: object, targetItem: object}|null>}
+   */
+  openInventory(player, gameState) {
+    if (this.inventoryOpen) return Promise.resolve(null);
+
+    this.inventoryOpen = true;
+    this.selectedIndex = 0;
+    this.inventoryMode = 'main';
+    this.pendingScrollItem = null;
+
+    return new Promise((resolve) => {
+      this.resolveInventory = resolve;
+      this.renderInventory(player, gameState);
+    });
+  }
+
+  /**
+   * インベントリを描画
+   */
+  renderInventory(player, gameState) {
+    // 既存のオーバーレイを除去
+    if (this.inventoryOverlay) {
+      this.inventoryOverlay.remove();
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'inventory-overlay';
+
+    const panel = document.createElement('div');
+    panel.className = 'inventory-panel';
+
+    // ヘッダー
+    const header = document.createElement('div');
+    header.className = 'inventory-header';
+
+    if (this.inventoryMode === 'enhance_target') {
+      header.textContent = '--- 強化する装備を選べ ---';
+    } else {
+      header.textContent = `--- 持ち物 (${player.inventory.length}/${player.maxInventory}) ---`;
+    }
+    panel.appendChild(header);
+
+    // 装備表示
+    const equipInfo = document.createElement('div');
+    equipInfo.className = 'equip-info';
+    const weaponName = player.weapon ? getItemDisplayName(player.weapon) : 'なし';
+    const shieldName = player.shield ? getItemDisplayName(player.shield) : 'なし';
+    equipInfo.innerHTML = `<span>武器: ${weaponName}</span> <span>盾: ${shieldName}</span>`;
+    panel.appendChild(equipInfo);
+
+    // アイテムリスト
+    const list = document.createElement('div');
+    list.className = 'inventory-list';
+
+    const itemsToShow = this.inventoryMode === 'enhance_target'
+      ? player.inventory.filter(it => it.category === ITEM_CATEGORY.WEAPON || it.category === ITEM_CATEGORY.SHIELD)
+      : player.inventory;
+
+    if (itemsToShow.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'inventory-item';
+      empty.textContent = '（何も持っていない）';
+      list.appendChild(empty);
+    } else {
+      itemsToShow.forEach((item, i) => {
+        const row = document.createElement('div');
+        row.className = 'inventory-item' + (i === this.selectedIndex ? ' selected' : '');
+
+        // 装備中マーク
+        let prefix = '  ';
+        if (item === player.weapon || item === player.shield) {
+          prefix = 'E ';
+        }
+
+        // カテゴリ記号
+        const catSymbol = getCategorySymbol(item.category);
+
+        row.textContent = `${prefix}${catSymbol} ${getItemDisplayName(item)}`;
+        row.dataset.index = i;
+        row.addEventListener('click', () => {
+          this.selectedIndex = i;
+          if (this.inventoryMode === 'enhance_target') {
+            this.handleEnhanceTarget(player, itemsToShow[i], gameState);
+          } else {
+            this.inventoryMode = 'action';
+            this.renderInventory(player, gameState);
+          }
+        });
+        list.appendChild(row);
+      });
+    }
+    panel.appendChild(list);
+
+    // アクションメニュー（アイテム選択後）
+    if (this.inventoryMode === 'action' && itemsToShow.length > 0) {
+      const actionMenu = document.createElement('div');
+      actionMenu.className = 'action-menu';
+
+      const item = itemsToShow[this.selectedIndex];
+      const actions = this.getAvailableActions(item, player);
+
+      actions.forEach((act) => {
+        const btn = document.createElement('button');
+        btn.className = 'action-button';
+        btn.textContent = act.label;
+        btn.addEventListener('click', () => {
+          this.handleItemAction(act.action, item, player, gameState);
+        });
+        actionMenu.appendChild(btn);
+      });
+
+      // 戻るボタン
+      const backBtn = document.createElement('button');
+      backBtn.className = 'action-button';
+      backBtn.textContent = '戻る';
+      backBtn.addEventListener('click', () => {
+        this.inventoryMode = 'main';
+        this.renderInventory(player, gameState);
+      });
+      actionMenu.appendChild(backBtn);
+
+      panel.appendChild(actionMenu);
+    }
+
+    // フッター
+    const footer = document.createElement('div');
+    footer.className = 'inventory-footer';
+    footer.textContent = 'Escまたは再度Iで閉じる';
+    panel.appendChild(footer);
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    this.inventoryOverlay = overlay;
+
+    // キーボード操作のリスナー
+    this._inventoryKeyHandler = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.handleInventoryKey(e, player, gameState, itemsToShow);
+    };
+    // 古いリスナーがあれば除去
+    document.removeEventListener('keydown', this._inventoryKeyHandler, true);
+    document.addEventListener('keydown', this._inventoryKeyHandler, true);
+  }
+
+  /**
+   * インベントリのキー操作
+   */
+  handleInventoryKey(e, player, gameState, itemsToShow) {
+    const key = e.code;
+
+    if (key === 'Escape' || key === 'KeyI') {
+      this.closeInventory(null);
+      return;
+    }
+
+    if (this.inventoryMode === 'action') {
+      if (key === 'Escape' || key === 'Backspace') {
+        this.inventoryMode = 'main';
+        this.renderInventory(player, gameState);
+        return;
+      }
+    }
+
+    if (key === 'ArrowUp' || key === 'KeyW' || key === 'Numpad8') {
+      this.selectedIndex = Math.max(0, this.selectedIndex - 1);
+      this.renderInventory(player, gameState);
+    } else if (key === 'ArrowDown' || key === 'KeyS' || key === 'Numpad2') {
+      this.selectedIndex = Math.min(itemsToShow.length - 1, this.selectedIndex + 1);
+      this.renderInventory(player, gameState);
+    } else if (key === 'Enter' || key === 'Space') {
+      if (itemsToShow.length === 0) return;
+
+      if (this.inventoryMode === 'enhance_target') {
+        this.handleEnhanceTarget(player, itemsToShow[this.selectedIndex], gameState);
+      } else if (this.inventoryMode === 'main') {
+        this.inventoryMode = 'action';
+        this.renderInventory(player, gameState);
+      }
+    }
+  }
+
+  /**
+   * カテゴリに応じた使用可能アクションを返す
+   */
+  getAvailableActions(item, player) {
+    const actions = [];
+
+    switch (item.category) {
+      case ITEM_CATEGORY.WEAPON:
+        if (player.weapon === item) {
+          if (!item.cursed) actions.push({ action: 'unequip', label: '外す' });
+        } else {
+          actions.push({ action: 'equip', label: '装備する' });
+        }
+        break;
+
+      case ITEM_CATEGORY.SHIELD:
+        if (player.shield === item) {
+          if (!item.cursed) actions.push({ action: 'unequip', label: '外す' });
+        } else {
+          actions.push({ action: 'equip', label: '装備する' });
+        }
+        break;
+
+      case ITEM_CATEGORY.GRASS:
+        actions.push({ action: 'use', label: '飲む' });
+        break;
+
+      case ITEM_CATEGORY.SCROLL:
+        actions.push({ action: 'use', label: '読む' });
+        break;
+
+      case ITEM_CATEGORY.FOOD:
+        actions.push({ action: 'use', label: '食べる' });
+        break;
+    }
+
+    actions.push({ action: 'drop', label: '置く' });
+    return actions;
+  }
+
+  /**
+   * アイテムアクションを実行
+   */
+  handleItemAction(action, item, player, gameState) {
+    switch (action) {
+      case 'equip':
+        this.closeInventory({ action: 'equip', item });
+        break;
+
+      case 'unequip':
+        this.closeInventory({ action: 'unequip', item });
+        break;
+
+      case 'use':
+        if (item.category === ITEM_CATEGORY.SCROLL &&
+            (item.effect === 'enhance' || item.effect === 'plating')) {
+          // 強化/メッキ巻物は対象選択モードに
+          this.pendingScrollItem = item;
+          this.inventoryMode = 'enhance_target';
+          this.selectedIndex = 0;
+          this.renderInventory(player, gameState);
+          return;
+        }
+        this.closeInventory({ action: 'use', item });
+        break;
+
+      case 'drop':
+        this.closeInventory({ action: 'drop', item });
+        break;
+    }
+  }
+
+  /**
+   * 強化対象選択の処理
+   */
+  handleEnhanceTarget(player, targetItem, gameState) {
+    this.closeInventory({
+      action: 'use',
+      item: this.pendingScrollItem,
+      targetItem
+    });
+  }
+
+  /**
+   * インベントリを閉じる
+   */
+  closeInventory(result) {
+    this.inventoryOpen = false;
+    this.inventoryMode = 'main';
+    this.pendingScrollItem = null;
+
+    if (this.inventoryOverlay) {
+      this.inventoryOverlay.remove();
+      this.inventoryOverlay = null;
+    }
+
+    if (this._inventoryKeyHandler) {
+      document.removeEventListener('keydown', this._inventoryKeyHandler, true);
+      this._inventoryKeyHandler = null;
+    }
+
+    if (this.resolveInventory) {
+      this.resolveInventory(result);
+      this.resolveInventory = null;
+    }
+  }
+}
+
+/**
+ * カテゴリ記号を返す
+ */
+function getCategorySymbol(category) {
+  switch (category) {
+    case ITEM_CATEGORY.WEAPON: return ')';
+    case ITEM_CATEGORY.SHIELD: return '[';
+    case ITEM_CATEGORY.GRASS: return '"';
+    case ITEM_CATEGORY.SCROLL: return '?';
+    case ITEM_CATEGORY.FOOD: return '%';
+    case ITEM_CATEGORY.GOLD: return '$';
+    default: return ' ';
   }
 }
