@@ -1,0 +1,132 @@
+/* 迷境の旅人 - スタイルシート */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #1a1a2e;
+  color: #e0e0e0;
+  font-family: 'MS Gothic', 'Courier New', monospace;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+#game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  background-color: #16213e;
+  border: 2px solid #4a5568;
+  border-radius: 8px;
+}
+
+/* ステータスバー */
+#status-bar {
+  width: 100%;
+  background-color: #0f0f23;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.status-row:last-child {
+  margin-bottom: 0;
+}
+
+.status-row span {
+  flex: 1;
+  text-align: center;
+}
+
+#hp-display {
+  color: #66ff66;
+}
+
+#fullness-display {
+  color: #ffcc00;
+}
+
+#gold-display {
+  color: #ffd700;
+}
+
+/* ゲームキャンバス */
+#game-canvas {
+  background-color: #0f0f23;
+  border: 2px solid #4a5568;
+  border-radius: 4px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* メッセージログ */
+#message-log {
+  width: 100%;
+  height: 80px;
+  background-color: #0f0f23;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  padding: 8px 12px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+#messages {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.message {
+  color: #c0c0c0;
+}
+
+.message.damage {
+  color: #ff6666;
+}
+
+.message.heal {
+  color: #66ff66;
+}
+
+.message.info {
+  color: #6699ff;
+}
+
+.message.important {
+  color: #ffcc00;
+}
+
+/* スクロールバースタイル */
+#message-log::-webkit-scrollbar {
+  width: 6px;
+}
+
+#message-log::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+#message-log::-webkit-scrollbar-thumb {
+  background: #4a5568;
+  border-radius: 3px;
+}
+
+#message-log::-webkit-scrollbar-thumb:hover {
+  background: #5a6578;
+}

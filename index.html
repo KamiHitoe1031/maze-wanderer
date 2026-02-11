@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>迷境の旅人 - ローグライクRPG</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="game-container">
+    <!-- ステータスバー -->
+    <div id="status-bar">
+      <div class="status-row">
+        <span id="floor-display">フロア: 1F</span>
+        <span id="level-display">Lv: 1</span>
+        <span id="hp-display">HP: 15/15</span>
+      </div>
+      <div class="status-row">
+        <span id="strength-display">ちから: 8</span>
+        <span id="fullness-display">満腹度: 100/100</span>
+        <span id="gold-display">銭: 0</span>
+      </div>
+    </div>
+
+    <!-- メインキャンバス -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- メッセージログ -->
+    <div id="message-log">
+      <div id="messages"></div>
+    </div>
+  </div>
+
+  <!-- JavaScriptモジュール -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
