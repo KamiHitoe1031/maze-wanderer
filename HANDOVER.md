@@ -1,17 +1,24 @@
 # 引継ぎ資料 - 迷境の旅人 Phase 1 MVP
 
-## 作成日時
+## 更新日時
 2026-02-12
 
 ## プロジェクト概要
 風来のシレン風ターン制ローグライクRPGをHTML + vanilla JavaScriptで実装するプロジェクト。
 
+## GitHubリポジトリ
+https://github.com/KamiHitoe1031/maze-wanderer
+
 ## 現在の状態
+
+### Phase 1 MVP - 完了
+
+すべてのセットアップと実装が完了し、GitHubにpush済み。
 
 ### ブランチ状況
 ```
-main     ← 現在のブランチ（Phase 1完了済み）
-develop  ← mainと同期済み
+main     ← 現在のブランチ（Phase 1完了、GitHubにpush済み）
+develop  ← mainと同期済み（GitHubにpush済み）
 phase1/mvp ← 作業完了、developにマージ済み
 ```
 
@@ -23,6 +30,9 @@ phase1/mvp ← 作業完了、developにマージ済み
 - [x] git init + 初回コミット
 - [x] develop, phase1/mvpブランチ作成
 - [x] phase1/mvp → develop → main へマージ完了
+- [x] GitHubリポジトリ作成（KamiHitoe1031/maze-wanderer）
+- [x] main, developブランチをpush
+- [x] gh CLI のPATH環境変数を設定
 
 #### Phase 1 MVP実装（全完了）
 | ファイル | 内容 | 状態 |
@@ -43,19 +53,13 @@ phase1/mvp ← 作業完了、developにマージ済み
 | `js/ui.js` | UI管理 | 完了 |
 | `js/main.js` | エントリーポイント | 完了 |
 
-### 未完了タスク
+## 環境情報
 
-#### GitHubリポジトリ（gh CLI問題）
-- [ ] `gh repo create KamiHitoe1031/maze-wanderer --public --source=. --push`
-- [ ] developブランチをpush
-
-**問題:** gh CLIがインストールされているがPATHに反映されていない
-**解決方法:** システム再起動後に以下を実行：
-```bash
-cd "O:\AI_\Claudecode\不思議のダンジョン"
-gh repo create KamiHitoe1031/maze-wanderer --public --source=. --push
-git push -u origin develop
-```
+### gh CLI
+- **バージョン:** 2.86.0
+- **インストール場所:** `C:\Program Files\GitHub CLI\gh.exe`
+- **PATH:** ユーザー環境変数に追加済み（次回セッションから `gh` コマンドが直接使用可能）
+- **認証:** KamiHitoe1031 アカウントでログイン済み
 
 ## ファイル構成
 
@@ -94,21 +98,26 @@ O:\AI_\Claudecode\不思議のダンジョン\
 
 ## 動作確認方法
 
-1. `index.html` をブラウザで開く
-2. 操作:
-   - **移動:** WASD / 矢印キー / テンキー（8方向）
-   - **攻撃:** F（向いている方向）
-   - **待機:** スペース / テンキー5
-   - **階段を降りる:** Enter
+### ローカル
+`index.html` をブラウザで開く
 
-3. デバッグコマンド（ブラウザコンソールで実行）:
-   ```javascript
-   debug.revealMap()      // マップ全体表示
-   debug.killAll()        // 全モンスター消去
-   debug.heal()           // HP全回復
-   debug.setFloor(5)      // 5階へ移動
-   debug.setLevel(10)     // レベル10に
-   ```
+### GitHub Pages（設定すれば）
+リポジトリ Settings → Pages → Source: main branch
+
+### 操作方法
+- **移動:** WASD / 矢印キー / テンキー（8方向）
+- **攻撃:** F（向いている方向）、または移動先に敵がいれば自動攻撃
+- **待機:** スペース / テンキー5
+- **階段を降りる:** Enter
+
+### デバッグコマンド（ブラウザコンソール）
+```javascript
+debug.revealMap()      // マップ全体表示
+debug.killAll()        // 全モンスター消去
+debug.heal()           // HP全回復
+debug.setFloor(5)      // 5階へ移動
+debug.setLevel(10)     // レベル10に
+```
 
 ## 実装詳細
 
@@ -154,6 +163,7 @@ Phase 2で実装予定:
 1. **SpriteManager経由での描画を厳守** - 直接Canvas描画しない
 2. **spec.mdの計算式を遵守** - ダメージ計算、経験値等
 3. **コミットはこまめに** - 機能単位で細かくコミット
+4. **ブランチ運用** - 作業はdevelopから切って、完了後にdevelop→mainへマージ
 
 ## コミット履歴（Phase 1）
 
@@ -171,4 +181,15 @@ feat: combat.js - ダメージ計算・戦闘処理を実装
 feat: game.js - ゲーム状態管理・ターン制ループを実装
 feat: ui.js + main.js - UI管理とゲーム統合を実装
 chore: 不要な.gitkeepファイルを削除
+docs: 引継ぎ資料を作成
+```
+
+## 次回作業時のコマンド
+
+```bash
+cd "O:\AI_\Claudecode\不思議のダンジョン"
+git checkout develop
+git pull origin develop
+git checkout -b phase2/items
+# Phase 2 の実装開始
 ```
