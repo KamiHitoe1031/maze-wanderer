@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 初期セットアップ - ディレクトリ構成を作成\n\n- CLAUDE.mdに従ったディレクトリ構成を作成\n- css, assets, jsディレクトリを追加\n- .gitignoreを追加\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
