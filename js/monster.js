@@ -1,9 +1,10 @@
 /**
- * monster.js - モンスターAI・行動処理
+ * monster.js - モンスターAI・行動処理（特殊能力対応）
  */
 
-import { MONSTER_DATA, getSpawnableMonsters, getMonsterData } from './data/monsters.js';
+import { MONSTER_DATA, getSpawnableMonsters, getMonsterData, getFloorBoss } from './data/monsters.js';
 import { DIRECTION } from './input.js';
+import { MAP_WIDTH, MAP_HEIGHT, TILE } from './dungeon.js';
 
 // 8方向の差分
 const DIRECTIONS = [
@@ -42,6 +43,12 @@ export class Monster {
     // 状態
     this.isAlive = true;
     this.direction = DIRECTIONS[Math.floor(Math.random() * 4)]; // 初期向きはランダム
+
+    // 分裂回数カウンター
+    this.splitCount = 0;
+
+    // 倍速行動のためのフラグ
+    this.actedThisTurn = false;
   }
 
   /**
@@ -71,9 +78,23 @@ export class Monster {
   }
 
   /**
+   * 壁抜け能力を持っているか
+   */
+  hasAbility(abilityPrefix) {
+    return this.abilities.some(a => a === abilityPrefix || a.startsWith(abilityPrefix));
+  }
+
+  /**
+   * 倍速移動か
+   */
+  isDoubleSpeed() {
+    return this.hasAbility('double_speed');
+  }
+
+  /**
    * AIによる行動決定
    */
-  decideAction(player, dungeon, monsters) {
+  decideAction(player, dungeon, monsters, gameState) {
     if (!this.isAlive) return null;
 
     // プレイヤーが同じ部屋にいるか確認
@@ -86,7 +107,84 @@ export class Monster {
     const dy = player.y - this.y;
     const distance = Math.abs(dx) + Math.abs(dy);
 
-    // 隣接している場合は攻撃
+    // --- 特殊能力チェック（攻撃の前に） ---
+
+    // 爆発系: HP半分以下で爆発
+    if (this.hp <= this.maxHp / 2) {
+      if (this.hasAbility('explode_30') && distance <= 1) {
+        return { type: 'ability', ability: 'explode', damage: 30, range: 1 };
+      }
+      if (this.hasAbility('explode_50') && distance <= 2) {
+        return { type: 'ability', ability: 'explode', damage: 50, range: 2 };
+      }
+      if (this.hasAbility('explode_fatal') && distance <= 2) {
+        return { type: 'ability', ability: 'explode', damage: 'fatal', range: 2 };
+      }
+    }
+
+    // 炎ブレス
+    if (this.hasAbility('fire_breath_20')) {
+      // 小竜: 正面の直線上にいる場合（隣接時）
+      if (distance <= 2 && this.isInLineOfSight(player)) {
+        if (Math.random() < 0.3) {
+          return { type: 'ability', ability: 'fire_breath', damage: 20 };
+        }
+      }
+    }
+    if (this.hasAbility('fire_breath_30') && inSameRoom) {
+      // 火竜: 同じ部屋ならどこからでも
+      if (Math.random() < 0.3) {
+        return { type: 'ability', ability: 'fire_breath', damage: 30 };
+      }
+    }
+    if (this.hasAbility('fire_breath_40')) {
+      // 天竜: フロアどこからでも
+      if (Math.random() < 0.25) {
+        return { type: 'ability', ability: 'fire_breath', damage: 40 };
+      }
+    }
+
+    // 遠距離攻撃（戦車系）
+    if (this.hasAbility('ranged_10') && distance <= 2 && distance > 1) {
+      if (this.isInLineOfSight(player)) {
+        return { type: 'ability', ability: 'ranged', damage: 10 };
+      }
+    }
+    if (this.hasAbility('ranged_20') && inSameRoom && distance > 1) {
+      return { type: 'ability', ability: 'ranged', damage: 20 };
+    }
+    if (this.hasAbility('ranged_30')) {
+      // 超戦車: 壁を貫通して弾
+      if (distance <= 10 && distance > 1) {
+        if (Math.random() < 0.4) {
+          return { type: 'ability', ability: 'ranged', damage: 30 };
+        }
+      }
+    }
+
+    // 催眠術（一つ目系）- 隣接時
+    if (distance <= 1 || (Math.abs(dx) === 1 && Math.abs(dy) === 1)) {
+      if (this.hasAbility('hypnosis_50') && Math.random() < 0.5) {
+        return { type: 'ability', ability: 'hypnosis' };
+      }
+      if (this.hasAbility('hypnosis_60') && Math.random() < 0.6) {
+        return { type: 'ability', ability: 'hypnosis' };
+      }
+    }
+
+    // 全画面攻撃（魔王）
+    if (this.hasAbility('aoe_30') && Math.random() < 0.2) {
+      return { type: 'ability', ability: 'aoe', damage: 30 };
+    }
+
+    // 召喚（魔王）
+    if (this.hasAbility('summon') && Math.random() < 0.15) {
+      return { type: 'ability', ability: 'summon' };
+    }
+
+    // --- 通常行動 ---
+
+    // 隣接している場合は攻撃（特殊攻撃付き）
     if (distance === 1 || (Math.abs(dx) === 1 && Math.abs(dy) === 1)) {
       return { type: 'attack', target: player };
     }
@@ -97,13 +195,42 @@ export class Monster {
     }
 
     // 通路にいる場合
-    // プレイヤーが視界内（周囲1マス）にいるか
+    // プレイヤーが視界内（周囲2マス）にいるか
     if (distance <= 2) {
       return this.moveTowardsPlayer(player, dungeon, monsters);
     }
 
+    // アイテム盗み系: 同じ部屋で接近→盗み（隣接時は攻撃より盗みを優先する場合あり）
+    // 実際の盗みはattack結果のon-hitで処理
+
     // ランダム移動
     return this.moveRandomly(dungeon, monsters);
+  }
+
+  /**
+   * プレイヤーが直線上にいるか（壁なし）
+   */
+  isInLineOfSight(player) {
+    const dx = player.x - this.x;
+    const dy = player.y - this.y;
+
+    // 4方向 or 8方向の直線
+    if (dx !== 0 && dy !== 0 && Math.abs(dx) !== Math.abs(dy)) {
+      return false;
+    }
+
+    const stepX = dx === 0 ? 0 : dx / Math.abs(dx);
+    const stepY = dy === 0 ? 0 : dy / Math.abs(dy);
+    let cx = this.x + stepX;
+    let cy = this.y + stepY;
+
+    while (cx !== player.x || cy !== player.y) {
+      if (cx < 0 || cx >= MAP_WIDTH || cy < 0 || cy >= MAP_HEIGHT) return false;
+      cx += stepX;
+      cy += stepY;
+    }
+
+    return true;
   }
 
   /**
@@ -169,9 +296,17 @@ export class Monster {
    * 指定位置に移動可能か
    */
   canMoveTo(x, y, dungeon, monsters, player) {
-    // マップ範囲チェック
-    if (!dungeon.isWalkable(x, y)) {
-      return false;
+    // 壁抜け能力チェック
+    if (this.hasAbility('wall_pass')) {
+      // 壁でもマップ範囲内なら移動可能（ただし範囲外は不可）
+      if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) {
+        return false;
+      }
+    } else {
+      // 通常の移動可能判定
+      if (!dungeon.isWalkable(x, y)) {
+        return false;
+      }
     }
 
     // プレイヤーとの衝突チェック
@@ -258,6 +393,26 @@ export class MonsterManager {
         this.spawn(monsterId, pos.x, pos.y);
       }
     }
+
+    // フロアボスを配置（5F, 10F, 15F, 20F）
+    const boss = getFloorBoss(floor);
+    if (boss) {
+      // 階段の近くにボスを配置
+      const stairsPos = dungeon.stairsPos;
+      if (stairsPos) {
+        // 階段周囲の空きマスに配置
+        for (const dir of DIRECTIONS) {
+          const bx = stairsPos.x + dir.dx;
+          const by = stairsPos.y + dir.dy;
+          if (dungeon.isWalkable(bx, by) &&
+              !(bx === player.x && by === player.y) &&
+              !this.getMonsterAt(bx, by)) {
+            this.spawn(boss.id, bx, by);
+            break;
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -318,7 +473,7 @@ export class MonsterManager {
   /**
    * 全モンスターの行動を実行
    */
-  processActions(player, dungeon, combat) {
+  processActions(player, dungeon, combat, gameState) {
     // プレイヤーからの距離が近い順にソート
     const sorted = this.getAliveMonsters().sort((a, b) => {
       return a.distanceTo(player) - b.distanceTo(player);
@@ -328,26 +483,421 @@ export class MonsterManager {
 
     for (const monster of sorted) {
       if (!monster.isAlive) continue;
+      if (!player.isAlive) break;
 
-      const action = monster.decideAction(player, dungeon, this.monsters);
-      if (!action) continue;
+      // 倍速モンスターは2回行動
+      const actionCount = monster.isDoubleSpeed() ? 2 : 1;
 
-      switch (action.type) {
-        case 'attack':
-          const attackResult = combat.monsterAttack(monster, player);
-          results.push(attackResult);
-          break;
+      for (let i = 0; i < actionCount; i++) {
+        if (!monster.isAlive || !player.isAlive) break;
 
-        case 'move':
-          monster.move(action.dx, action.dy);
-          break;
+        const action = monster.decideAction(player, dungeon, this.monsters, gameState);
+        if (!action) continue;
 
-        case 'wait':
-          // 何もしない
-          break;
+        switch (action.type) {
+          case 'attack': {
+            const attackResult = combat.monsterAttack(monster, player);
+
+            // 通常攻撃に追加される特殊効果
+            if (attackResult.hit) {
+              const specialResults = this.applyOnHitAbilities(monster, player, gameState);
+              for (const sr of specialResults) {
+                results.push(sr);
+              }
+            }
+
+            results.push(attackResult);
+            break;
+          }
+
+          case 'ability': {
+            const abilityResult = this.processAbility(monster, player, dungeon, action, gameState);
+            if (abilityResult) {
+              results.push(abilityResult);
+            }
+            break;
+          }
+
+          case 'move':
+            monster.move(action.dx, action.dy);
+            break;
+
+          case 'wait':
+            break;
+        }
       }
     }
 
     return results;
+  }
+
+  /**
+   * 攻撃命中時の特殊効果を適用
+   */
+  applyOnHitAbilities(monster, player, gameState) {
+    const results = [];
+
+    // ちから下げ（吸血コウモリ・毒サソリ系）
+    if (monster.hasAbility('drain_strength_1')) {
+      if (player.strength > 1) {
+        player.strength -= 1;
+        results.push({
+          hit: true,
+          message: `${monster.name}の攻撃でちからが1下がった！`,
+          damage: 0
+        });
+      }
+    }
+    if (monster.hasAbility('drain_strength_2')) {
+      const drain = Math.min(2, player.strength - 1);
+      if (drain > 0) {
+        player.strength -= drain;
+        results.push({
+          hit: true,
+          message: `${monster.name}の攻撃でちからが${drain}下がった！`,
+          damage: 0
+        });
+      }
+    }
+
+    // レベル下げ（経験吸い）
+    if (monster.hasAbility('drain_level')) {
+      if (player.level > 1) {
+        player.level--;
+        // maxHPの再計算は簡易的にする（-5程度）
+        const hpLoss = 3 + Math.floor(player.level / 5);
+        player.maxHp = Math.max(15, player.maxHp - hpLoss);
+        player.hp = Math.min(player.hp, player.maxHp);
+        results.push({
+          hit: true,
+          message: `${monster.name}の攻撃でレベルが下がった！（Lv${player.level}）`,
+          damage: 0
+        });
+      }
+    }
+
+    // アイテム盗み（こそ泥タヌキ）
+    if (monster.hasAbility('steal_item') && player.inventory.length > 0) {
+      if (Math.random() < 0.3) {
+        // 非装備品からランダムに盗む
+        const stealable = player.inventory.filter(
+          it => it !== player.weapon && it !== player.shield
+        );
+        if (stealable.length > 0) {
+          const stolen = stealable[Math.floor(Math.random() * stealable.length)];
+          const idx = player.inventory.indexOf(stolen);
+          if (idx >= 0) {
+            player.inventory.splice(idx, 1);
+            results.push({
+              hit: true,
+              message: `${monster.name}に${stolen.name || 'アイテム'}を盗まれた！`,
+              damage: 0
+            });
+            // タヌキはワープする
+            this.warpMonster(monster, gameState);
+          }
+        }
+      }
+    }
+
+    // 装備品盗み（大泥棒タヌキ）
+    if (monster.hasAbility('steal_equip') && player.inventory.length > 0) {
+      if (Math.random() < 0.3) {
+        const stolen = player.inventory[Math.floor(Math.random() * player.inventory.length)];
+        const idx = player.inventory.indexOf(stolen);
+        if (idx >= 0) {
+          // 装備中なら外す
+          if (player.weapon === stolen) player.weapon = null;
+          if (player.shield === stolen) player.shield = null;
+          player.inventory.splice(idx, 1);
+          results.push({
+            hit: true,
+            message: `${monster.name}に${stolen.name || 'アイテム'}を盗まれた！`,
+            damage: 0
+          });
+          this.warpMonster(monster, gameState);
+        }
+      }
+    }
+
+    // おにぎり変化（おにぎり狸）
+    if (monster.hasAbility('riceball_transform') && player.inventory.length > 0) {
+      if (Math.random() < 0.25) {
+        const targets = player.inventory.filter(
+          it => it !== player.weapon && it !== player.shield
+        );
+        if (targets.length > 0) {
+          const target = targets[Math.floor(Math.random() * targets.length)];
+          const oldName = target.name || 'アイテム';
+          // おにぎりに変化
+          target.id = 'riceball';
+          target.name = 'おにぎり';
+          target.category = 'food';
+          target.spriteKey = 'item.food';
+          target.fullnessRestore = 50;
+          results.push({
+            hit: true,
+            message: `${monster.name}の攻撃で${oldName}がおにぎりに変わった！`,
+            damage: 0
+          });
+        }
+      }
+    }
+
+    // 盾の錆（錆カビ）
+    if (monster.hasAbility('rust_shield_1') && player.shield) {
+      if (!player.shield.rustproof && (player.shield.enhance || 0) > 0) {
+        player.shield.enhance -= 1;
+        results.push({
+          hit: true,
+          message: `${monster.name}の攻撃で${player.shield.name}の強化値が1下がった！`,
+          damage: 0
+        });
+      }
+    }
+    if (monster.hasAbility('rust_shield_2') && player.shield) {
+      if (!player.shield.rustproof && (player.shield.enhance || 0) > 0) {
+        const drain = Math.min(2, player.shield.enhance);
+        player.shield.enhance -= drain;
+        results.push({
+          hit: true,
+          message: `${monster.name}の攻撃で${player.shield.name}の強化値が${drain}下がった！`,
+          damage: 0
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * 特殊能力を処理
+   */
+  processAbility(monster, player, dungeon, action, gameState) {
+    switch (action.ability) {
+      case 'fire_breath': {
+        const damage = action.damage;
+        player.takeDamage(damage);
+        return {
+          hit: true,
+          damage: damage,
+          message: `${monster.name}が炎を吐いた！${damage}のダメージ！`
+        };
+      }
+
+      case 'ranged': {
+        const damage = action.damage;
+        player.takeDamage(damage);
+        return {
+          hit: true,
+          damage: damage,
+          message: `${monster.name}が弾を撃ってきた！${damage}のダメージ！`
+        };
+      }
+
+      case 'explode': {
+        let damage = action.damage;
+        const range = action.range;
+        const isFatal = damage === 'fatal';
+
+        // 爆発ダメージをプレイヤーに与える
+        const dist = monster.distanceTo(player);
+        if (dist <= range) {
+          if (isFatal) {
+            // HP1にする
+            damage = player.hp - 1;
+            if (damage > 0) {
+              player.takeDamage(damage);
+            }
+          } else {
+            player.takeDamage(damage);
+          }
+        }
+
+        // 周囲のモンスターにもダメージ
+        for (const other of this.monsters) {
+          if (other === monster || !other.isAlive) continue;
+          const d = Math.abs(other.x - monster.x) + Math.abs(other.y - monster.y);
+          if (d <= range) {
+            if (isFatal) {
+              other.takeDamage(other.hp);
+            } else {
+              other.takeDamage(damage);
+            }
+          }
+        }
+
+        // 自分は死亡
+        monster.isAlive = false;
+        monster.hp = 0;
+
+        const dmgText = isFatal ? 'HPが1になった' : `${action.damage}のダメージ`;
+        return {
+          hit: dist <= range,
+          damage: typeof damage === 'number' ? damage : 0,
+          message: `${monster.name}が爆発した！${dist <= range ? dmgText + '！' : ''}`
+        };
+      }
+
+      case 'hypnosis': {
+        // ランダムなアイテムを強制使用
+        if (player.inventory.length > 0) {
+          const usable = player.inventory.filter(
+            it => it.category === 'grass' || it.category === 'scroll' || it.category === 'food'
+          );
+          if (usable.length > 0) {
+            const item = usable[Math.floor(Math.random() * usable.length)];
+            const idx = player.inventory.indexOf(item);
+            if (idx >= 0) {
+              player.inventory.splice(idx, 1);
+              return {
+                hit: true,
+                damage: 0,
+                message: `${monster.name}の催眠術で${item.name || 'アイテム'}を勝手に使ってしまった！`
+              };
+            }
+          }
+        }
+        return {
+          hit: false,
+          damage: 0,
+          message: `${monster.name}が催眠術をかけてきた！しかし何も起こらなかった。`
+        };
+      }
+
+      case 'aoe': {
+        // 全画面攻撃（魔王）
+        const damage = action.damage;
+        player.takeDamage(damage);
+        return {
+          hit: true,
+          damage: damage,
+          message: `${monster.name}が暗黒の力を放った！${damage}のダメージ！`
+        };
+      }
+
+      case 'summon': {
+        // 周囲に味方モンスターを召喚
+        let summoned = 0;
+        const spawnableIds = getSpawnableMonsters(gameState ? gameState.floor : 20);
+        if (spawnableIds.length > 0) {
+          for (const dir of DIRECTIONS) {
+            if (summoned >= 3) break;
+            const sx = monster.x + dir.dx;
+            const sy = monster.y + dir.dy;
+            if (dungeon.isWalkable(sx, sy) &&
+                !(sx === player.x && sy === player.y) &&
+                !this.getMonsterAt(sx, sy)) {
+              const id = spawnableIds[Math.floor(Math.random() * spawnableIds.length)];
+              this.spawn(id, sx, sy);
+              summoned++;
+            }
+          }
+        }
+        return {
+          hit: false,
+          damage: 0,
+          message: summoned > 0
+            ? `${monster.name}が仲間を${summoned}体呼び出した！`
+            : `${monster.name}が仲間を呼ぼうとしたが、来なかった。`
+        };
+      }
+
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * モンスターをランダム位置にワープ
+   */
+  warpMonster(monster, gameState) {
+    if (!gameState) return;
+    const dungeon = gameState.dungeon;
+    for (let i = 0; i < 20; i++) {
+      const pos = dungeon.getRandomWalkablePosition();
+      if (!pos) continue;
+      if (pos.x === gameState.player.x && pos.y === gameState.player.y) continue;
+      if (this.getMonsterAt(pos.x, pos.y)) continue;
+      monster.x = pos.x;
+      monster.y = pos.y;
+      break;
+    }
+  }
+
+  /**
+   * 死亡時の乗り移り処理（亡霊武者・悪霊武者）
+   */
+  handlePossessOnDeath(deadMonster, player) {
+    if (!deadMonster.hasAbility('possess_on_death')) return null;
+
+    // 近くのモンスターを探す
+    let closest = null;
+    let closestDist = Infinity;
+    for (const m of this.monsters) {
+      if (m === deadMonster || !m.isAlive || m.type === 'boss') continue;
+      const dist = Math.abs(m.x - deadMonster.x) + Math.abs(m.y - deadMonster.y);
+      if (dist < closestDist && dist <= 5) {
+        closest = m;
+        closestDist = dist;
+      }
+    }
+
+    if (closest) {
+      // レベルアップ相当の強化
+      closest.atk = Math.floor(closest.atk * 1.5);
+      closest.hp = Math.floor(closest.hp * 1.5);
+      closest.maxHp = Math.floor(closest.maxHp * 1.5);
+      closest.exp = Math.floor(closest.exp * 2);
+      return {
+        message: `${deadMonster.name}が${closest.name}に乗り移った！${closest.name}が強化された！`,
+        hit: false,
+        damage: 0
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * 分裂処理
+   */
+  handleSplit(monster, dungeon, player) {
+    // split_1: 1回のみ分裂
+    if (monster.hasAbility('split_1') && monster.splitCount < 1) {
+      return this.doSplit(monster, dungeon, player);
+    }
+    // split_2: 2回まで分裂
+    if (monster.hasAbility('split_2') && monster.splitCount < 2) {
+      return this.doSplit(monster, dungeon, player);
+    }
+    return null;
+  }
+
+  /**
+   * 分裂実行
+   */
+  doSplit(monster, dungeon, player) {
+    // 周囲の空きマスに分裂
+    for (const dir of DIRECTIONS) {
+      const nx = monster.x + dir.dx;
+      const ny = monster.y + dir.dy;
+      if (dungeon.isWalkable(nx, ny) &&
+          !(nx === player.x && ny === player.y) &&
+          !this.getMonsterAt(nx, ny)) {
+        const newMonster = this.spawn(monster.id, nx, ny);
+        if (newMonster) {
+          newMonster.hp = monster.hp;
+          newMonster.splitCount = monster.splitCount + 1;
+          monster.splitCount++;
+          return {
+            message: `${monster.name}が分裂した！`,
+            hit: false,
+            damage: 0
+          };
+        }
+      }
+    }
+    return null;
   }
 }
