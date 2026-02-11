@@ -48,6 +48,10 @@ export class Player {
 
     // 状態フラグ
     this.isAlive = true;
+    this.hasRevival = false;
+
+    // 状態異常
+    this.statusEffects = [];
   }
 
   /**
@@ -88,6 +92,13 @@ export class Player {
   }
 
   /**
+   * 満腹の盾を装備しているか
+   */
+  hasFullnessShield() {
+    return this.shield && this.shield.effect === 'fullness';
+  }
+
+  /**
    * 経験値を獲得
    */
   gainExp(amount) {
@@ -119,6 +130,9 @@ export class Player {
    * ダメージを受ける
    */
   takeDamage(amount) {
+    // 無敵チェック
+    if (this.hasStatusEffect('invincible')) return 0;
+
     this.hp -= amount;
     if (this.hp <= 0) {
       this.hp = 0;
@@ -168,7 +182,12 @@ export class Player {
    */
   starvationDamage() {
     if (this.fullness <= 0) {
-      this.takeDamage(1);
+      // starvationは無敵でも受ける - 直接HP減算
+      this.hp -= 1;
+      if (this.hp <= 0) {
+        this.hp = 0;
+        this.isAlive = false;
+      }
       return true;
     }
     return false;
@@ -199,6 +218,24 @@ export class Player {
   getExpToNextLevel() {
     if (this.level >= 50) return 0;
     return calcRequiredExp(this.level + 1) - this.exp;
+  }
+
+  /**
+   * 状態異常を持っているか
+   */
+  hasStatusEffect(type) {
+    return this.statusEffects.some(e => e.type === type);
+  }
+
+  /**
+   * 状態異常ターン経過
+   */
+  tickStatusEffects() {
+    this.statusEffects = this.statusEffects.filter(effect => {
+      if (effect.remaining === -1) return true; // 永続
+      effect.remaining--;
+      return effect.remaining > 0;
+    });
   }
 
   /**
