@@ -1,4 +1,4 @@
-# 引継ぎ資料 - 迷境の旅人 Phase 1 MVP
+# 引継ぎ資料 - 迷境の旅人 Phase 2 アイテムと装備
 
 ## 更新日時
 2026-02-12
@@ -11,55 +11,41 @@ https://github.com/KamiHitoe1031/maze-wanderer
 
 ## 現在の状態
 
-### Phase 1 MVP - 完了
+### Phase 2 アイテムと装備 - 完了
 
-すべてのセットアップと実装が完了し、GitHubにpush済み。
+アイテムシステム、装備、満腹度、全モンスター種と特殊能力を実装。
+`phase2/items` ブランチで作業中。developへのマージはまだ。
 
 ### ブランチ状況
 ```
-main     ← 現在のブランチ（Phase 1完了、GitHubにpush済み）
-develop  ← mainと同期済み（GitHubにpush済み）
-phase1/mvp ← 作業完了、developにマージ済み
+main          ← Phase 1完了済み
+develop       ← Phase 1完了済み
+phase2/items  ← 現在のブランチ（Phase 2実装完了、マージ待ち）
 ```
 
 ### 完了タスク
 
-#### セットアップ
-- [x] ディレクトリ構成作成（CLAUDE.md準拠）
-- [x] .gitignore作成
-- [x] git init + 初回コミット
-- [x] develop, phase1/mvpブランチ作成
-- [x] phase1/mvp → develop → main へマージ完了
-- [x] GitHubリポジトリ作成（KamiHitoe1031/maze-wanderer）
-- [x] main, developブランチをpush
-- [x] gh CLI のPATH環境変数を設定
+#### Phase 1 MVP（完了済み）
+基本的なダンジョン探索・戦闘・階段降下が動作。
 
-#### Phase 1 MVP実装（全完了）
+#### Phase 2 実装（全完了）
 | ファイル | 内容 | 状態 |
 |---------|------|------|
-| `index.html` | ゲーム画面HTML | 完了 |
-| `css/style.css` | スタイルシート | 完了 |
-| `js/rng.js` | シード付き乱数（xorshift128） | 完了 |
-| `js/sprite-manager.js` | スプライト管理 | 完了 |
-| `js/data/sprites.js` | スプライト定義 | 完了 |
-| `js/dungeon.js` | BSP法ダンジョン生成 | 完了 |
-| `js/renderer.js` | Canvas描画 | 完了 |
-| `js/input.js` | キーボード入力 | 完了 |
-| `js/player.js` | プレイヤー状態 | 完了 |
-| `js/monster.js` | モンスターAI | 完了 |
-| `js/data/monsters.js` | モンスターデータ（3種） | 完了 |
-| `js/combat.js` | ダメージ計算 | 完了 |
-| `js/game.js` | ゲームループ | 完了 |
-| `js/ui.js` | UI管理 | 完了 |
-| `js/main.js` | エントリーポイント | 完了 |
-
-## 環境情報
-
-### gh CLI
-- **バージョン:** 2.86.0
-- **インストール場所:** `C:\Program Files\GitHub CLI\gh.exe`
-- **PATH:** ユーザー環境変数に追加済み（次回セッションから `gh` コマンドが直接使用可能）
-- **認証:** KamiHitoe1031 アカウントでログイン済み
+| `js/data/weapons.js` | 武器データ11種 | 完了 |
+| `js/data/shields.js` | 盾データ10種 | 完了 |
+| `js/data/grasses.js` | 草データ17種（仮名テーブル付き） | 完了 |
+| `js/data/scrolls.js` | 巻物データ16種（仮名テーブル付き） | 完了 |
+| `js/data/food.js` | 食料データ5種 | 完了 |
+| `js/item.js` | アイテム生成・配置・拾得・使用効果 | 完了 |
+| `js/player.js` | 状態異常・復活の種・満腹の盾追加 | 完了 |
+| `js/ui.js` | インベントリUI（Promise型モーダル） | 完了 |
+| `css/style.css` | インベントリUIスタイル追加 | 完了 |
+| `js/game.js` | アイテム統合・装備・使用・ドロップ | 完了 |
+| `js/renderer.js` | フロアアイテム描画追加 | 完了 |
+| `js/main.js` | インベントリUI統合 | 完了 |
+| `js/data/monsters.js` | 全45種モンスターデータ | 完了 |
+| `js/data/sprites.js` | 全モンスタースプライト定義 | 完了 |
+| `js/monster.js` | モンスター特殊能力AI | 完了 |
 
 ## ファイル構成
 
@@ -71,7 +57,7 @@ O:\AI_\Claudecode\不思議のダンジョン\
 ├── .gitignore
 ├── index.html         # エントリーポイント
 ├── css/
-│   └── style.css      # スタイルシート
+│   └── style.css      # スタイルシート（インベントリUI含む）
 ├── assets/            # 画像アセット（空、後から追加）
 │   ├── characters/
 │   ├── monsters/
@@ -84,79 +70,137 @@ O:\AI_\Claudecode\不思議のダンジョン\
     ├── game.js        # ゲーム状態管理
     ├── dungeon.js     # ダンジョン生成（BSP法）
     ├── player.js      # プレイヤー状態
-    ├── monster.js     # モンスターAI
+    ├── monster.js     # モンスターAI（特殊能力対応）
     ├── combat.js      # ダメージ計算
+    ├── item.js        # アイテム生成・効果適用
     ├── renderer.js    # Canvas描画
     ├── input.js       # キーボード入力
-    ├── ui.js          # UI管理
+    ├── ui.js          # UI管理（インベントリ含む）
     ├── rng.js         # 乱数生成
     ├── sprite-manager.js # スプライト管理
     └── data/
-        ├── sprites.js  # スプライト定義
-        └── monsters.js # モンスターデータ
+        ├── sprites.js  # スプライト定義（全モンスター対応）
+        ├── monsters.js # モンスターデータ（45種）
+        ├── weapons.js  # 武器データ（11種）
+        ├── shields.js  # 盾データ（10種）
+        ├── grasses.js  # 草データ（17種）
+        ├── scrolls.js  # 巻物データ（16種）
+        └── food.js     # 食料データ（5種）
 ```
 
-## 動作確認方法
+## 操作方法
 
-### ローカル
-`index.html` をブラウザで開く
-
-### GitHub Pages（設定すれば）
-リポジトリ Settings → Pages → Source: main branch
-
-### 操作方法
 - **移動:** WASD / 矢印キー / テンキー（8方向）
 - **攻撃:** F（向いている方向）、または移動先に敵がいれば自動攻撃
 - **待機:** スペース / テンキー5
-- **階段を降りる:** Enter
+- **拾う/階段:** Enter
+- **インベントリ:** I
+  - 上下キー: アイテム選択
+  - Enter: アクションメニュー表示
+  - Escape: 閉じる
 
 ### デバッグコマンド（ブラウザコンソール）
 ```javascript
-debug.revealMap()      // マップ全体表示
-debug.killAll()        // 全モンスター消去
-debug.heal()           // HP全回復
-debug.setFloor(5)      // 5階へ移動
-debug.setLevel(10)     // レベル10に
+debug.revealMap()              // マップ全体表示
+debug.killAll()                // 全モンスター消去
+debug.heal()                   // HP全回復
+debug.setFloor(5)              // 5階へ移動
+debug.setLevel(10)             // レベル10に
+debug.giveItem('heal_grass', 'grass')   // 薬草を入手
+debug.giveItem('iron_katana', 'weapon') // 鉄の刀を入手
+debug.giveItem('iron_shield', 'shield') // 鉄の盾を入手
+debug.spawnMonster('fire_dragon')       // 火竜を召喚
 ```
 
-## 実装詳細
+## Phase 2 実装詳細
 
-### ダメージ計算式（spec.md §4準拠）
-```javascript
-基本ダメージ = max(1, 攻撃力 - 防御力 + 1)
-乱数補正 = 87.5% ～ 112.5%
-最終ダメージ = floor(基本ダメージ × 乱数補正)
-最低保証 = 1
+### アイテムシステム
+- フロア別3段階テーブル（前半1-5F / 中盤6-12F / 後半13-20F）
+- 各フロアにアイテムをランダム配置（部屋ごとに0-2個 + ゴールド0-1個）
+- ユニークID方式でアイテムインスタンスを管理
+- 拾う/使う/装備/外す/置くアクション
+
+### 装備システム
+- 武器: baseAtk + enhance値が攻撃力に加算
+- 盾: baseDef + enhance値から防御力を計算
+- 盾特殊効果: 見切り(evasion), 毒消し(antidote), 錆止め(rustproof), 爆発防御(blast_guard), 満腹(fullness)
+
+### 草・巻物・食料
+- 草: 回復/強化/状態異常/復活の種 等17種
+- 巻物: 強化/識別/混乱/ワープ 等16種
+- 食料: おにぎり系5種（満腹度回復）
+- 復活の種: 飲むとhasRevivalフラグON、死亡時に自動蘇生
+
+### 満腹度
+- 10ターンに1減少（満腹の盾装備時は20ターンに1）
+- 0で飢餓ダメージ（毎ターンHP-1、無敵でも受ける）
+
+### モンスター特殊能力（全実装）
+| 系統 | 能力 | 実装 |
+|------|------|------|
+| 幽霊系 | 壁抜け移動 | canMoveToでwall_pass判定 |
+| 幽霊系 | 乗り移り | handlePossessOnDeath |
+| ドレイン系 | ちから/レベル下げ | applyOnHitAbilities |
+| 竜系 | 炎ブレス（20/30/40） | processAbility fire_breath |
+| 一つ目系 | 催眠術（アイテム強制使用） | processAbility hypnosis |
+| 爆発系 | HP半分以下で爆発 | processAbility explode |
+| タヌキ系 | アイテム盗み/おにぎり変化 | applyOnHitAbilities |
+| 錆カビ | 盾強化値低下 | applyOnHitAbilities |
+| 戦車系 | 遠距離弾（10/20/30） | processAbility ranged |
+| 分裂スライム | 被ダメで分裂 | handleSplit |
+| ボス系 | 倍速/全画面攻撃/召喚 | processAbility + isDoubleSpeed |
+
+### フロアボス
+- 5F: ガーゴイル（倍速移動）
+- 10F: キマイラ（炎30+毒）
+- 15F: ワイバーン（炎40+倍速）
+- 20F: 魔王（全画面30+召喚）
+- 階段の隣に配置
+
+## コミット履歴（Phase 2）
+
+```
+feat: 全アイテムデータ定義を追加（武器・盾・草・巻物・食料）
+feat: item.js - アイテム生成・フロア配置・拾得・使用効果システムを実装
+feat: player.js - 状態異常・満腹の盾・復活の種システムを追加
+feat: インベントリUI・装備管理画面を実装
+feat: game.js + renderer.js + main.js - アイテム・装備・満腹度を統合
+feat: 全45種モンスターデータとスプライト定義を追加
+feat: モンスター特殊能力AIを実装
 ```
 
-### モンスター（Phase 1）
-| 名前 | HP | 攻撃 | 防御 | 経験値 | 出現階 |
-|------|-----|------|------|--------|--------|
-| 緑スライム | 6 | 3 | 2 | 2 | 1-3F |
-| 青スライム | 15 | 8 | 5 | 8 | 3-6F |
-| ネズミ小僧 | 8 | 5 | 3 | 4 | 1-4F |
+## 次のフェーズ（Phase 3: 中級システム）
 
-### ゲームループ
-```
-1. プレイヤー入力待ち
-2. プレイヤー行動処理
-3. モンスター行動処理（距離順）
-4. ターン終了処理（満腹度、HP回復）
-5. 描画
-6. 死亡/クリア判定
-→ 1に戻る
-```
-
-## 次のフェーズ（Phase 2）
-
-Phase 2で実装予定:
-- アイテム拾得・使用（草・巻物・食料）
-- 武器・盾の装備
-- 満腹度システムの完全実装
-- 全モンスター種の追加
-- メッセージログの拡充
+Phase 3で実装予定:
+- 視界システム（fov.js - 部屋全体可視/通路周囲1マス）
+- 杖（魔法弾の直線飛行処理）
+- 壺（保存・識別・合成の壺）
+- 腕輪
+- 未識別システム（仮名ランダム割り当て、使用時識別）
+- 罠（trap.js - 罠配置・発動処理）
+- 矢の射撃処理
 
 詳細は `CLAUDE.md` と `spec.md` を参照。
+
+## 次回作業時のコマンド
+
+```bash
+cd "O:\AI_\Claudecode\不思議のダンジョン"
+
+# Phase 2をdevelopにマージ
+git checkout develop
+git merge phase2/items
+git push origin develop
+
+# 動作確認後、mainにマージ
+git checkout main
+git merge develop
+git push origin main
+
+# Phase 3開始
+git checkout develop
+git checkout -b phase3/intermediate
+```
 
 ## 注意事項
 
@@ -164,32 +208,4 @@ Phase 2で実装予定:
 2. **spec.mdの計算式を遵守** - ダメージ計算、経験値等
 3. **コミットはこまめに** - 機能単位で細かくコミット
 4. **ブランチ運用** - 作業はdevelopから切って、完了後にdevelop→mainへマージ
-
-## コミット履歴（Phase 1）
-
-```
-feat: 初期セットアップ - ディレクトリ構成を作成
-feat: index.html + style.css の骨格を実装
-feat: rng.js - シード付き疑似乱数生成器を実装
-feat: sprite-manager.js + data/sprites.js を実装
-feat: dungeon.js - BSP法によるダンジョン自動生成を実装
-feat: renderer.js - Canvas描画を実装
-feat: input.js - キーボード入力ハンドラを実装
-feat: player.js - プレイヤー状態管理を実装
-feat: monster.js + data/monsters.js - モンスターAIを実装
-feat: combat.js - ダメージ計算・戦闘処理を実装
-feat: game.js - ゲーム状態管理・ターン制ループを実装
-feat: ui.js + main.js - UI管理とゲーム統合を実装
-chore: 不要な.gitkeepファイルを削除
-docs: 引継ぎ資料を作成
-```
-
-## 次回作業時のコマンド
-
-```bash
-cd "O:\AI_\Claudecode\不思議のダンジョン"
-git checkout develop
-git pull origin develop
-git checkout -b phase2/items
-# Phase 2 の実装開始
-```
+5. **Phase 2で追加した草・巻物の仮名テーブルは定義済み** - Phase 3の未識別システムで使用予定
