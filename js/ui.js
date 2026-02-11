@@ -379,14 +379,17 @@ export class UI {
     document.body.appendChild(overlay);
     this.inventoryOverlay = overlay;
 
-    // キーボード操作のリスナー
+    // キーボード操作のリスナー（重複登録を防ぐ）
+    // 古いリスナーがあれば先に除去
+    if (this._inventoryKeyHandler) {
+      document.removeEventListener('keydown', this._inventoryKeyHandler, true);
+    }
+    // 現在のitemリストをクロージャでキャプチャした新しいハンドラを作成
     this._inventoryKeyHandler = (e) => {
       e.preventDefault();
       e.stopPropagation();
       this.handleInventoryKey(e, player, gameState, itemsToShow);
     };
-    // 古いリスナーがあれば除去
-    document.removeEventListener('keydown', this._inventoryKeyHandler, true);
     document.addEventListener('keydown', this._inventoryKeyHandler, true);
   }
 
