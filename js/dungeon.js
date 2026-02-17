@@ -180,6 +180,8 @@ export class Dungeon {
    * ダンジョンを生成
    */
   generate() {
+    this.monsterHouseRoom = null;
+
     // BSP木を構築
     const root = new BSPNode(0, 0, MAP_WIDTH, MAP_HEIGHT);
     const nodes = [root];
@@ -232,6 +234,21 @@ export class Dungeon {
     const stairsRoom = this.rng.pick(otherRooms) || startRoom;
     this.stairsPos = this.getRandomPointInRoom(stairsRoom);
     this.map[this.stairsPos.y][this.stairsPos.x] = TILE.STAIRS;
+
+    // モンスターハウス判定
+    const mhProbability = this.floor <= 4 ? 0
+      : this.floor <= 9 ? 0.08
+      : this.floor <= 14 ? 0.12
+      : 0.15;
+
+    if (mhProbability > 0 && this.rng.chance(mhProbability)) {
+      const playerStartRoom = this.getRoomAt(this.playerStartPos.x, this.playerStartPos.y);
+      const stairsRoom = this.getRoomAt(this.stairsPos.x, this.stairsPos.y);
+      const candidates = this.rooms.filter(r => r !== playerStartRoom && r !== stairsRoom);
+      if (candidates.length > 0) {
+        this.monsterHouseRoom = this.rng.pick(candidates);
+      }
+    }
 
     return this;
   }

@@ -10,6 +10,7 @@ import { FOOD_DATA } from './data/food.js';
 import { RING_DATA } from './data/rings.js';
 import { POT_DATA } from './data/pots.js';
 import { ARROW_DATA } from './data/arrows.js';
+import { WAND_DATA } from './data/wands.js';
 import { SEAL_DATA, getSealDisplayChar } from './data/seals.js';
 
 // アイテムカテゴリ
@@ -22,6 +23,7 @@ export const ITEM_CATEGORY = {
   RING: 'ring',
   POT: 'pot',
   ARROW: 'arrow',
+  WAND: 'wand',
   GOLD: 'gold'
 };
 
@@ -126,6 +128,12 @@ export function createItem(dataId, category, options = {}) {
       item.count = options.count ?? 1;
       break;
 
+    case ITEM_CATEGORY.WAND:
+      item.effect = data.effect;
+      item.charges = options.charges ?? options.rng?.nextInt(data.chargeRange[0], data.chargeRange[1]) ?? data.chargeRange[0];
+      item.maxCharges = item.charges;
+      break;
+
     case ITEM_CATEGORY.GOLD:
       item.amount = options.amount ?? 100;
       item.name = `${item.amount}銭`;
@@ -149,6 +157,7 @@ function getItemDataByCategory(id, category) {
     case ITEM_CATEGORY.RING: return RING_DATA.find(d => d.id === id);
     case ITEM_CATEGORY.POT: return POT_DATA.find(d => d.id === id);
     case ITEM_CATEGORY.ARROW: return ARROW_DATA.find(d => d.id === id);
+    case ITEM_CATEGORY.WAND: return WAND_DATA.find(d => d.id === id);
     default: return null;
   }
 }
@@ -172,6 +181,11 @@ export function getItemDisplayName(item) {
   // 矢の本数
   if (item.category === ITEM_CATEGORY.ARROW && item.count !== undefined) {
     name += `×${item.count}`;
+  }
+
+  // 杖の回数
+  if (item.category === ITEM_CATEGORY.WAND && item.charges !== undefined) {
+    name += `[${item.charges}]`;
   }
 
   // 壺の容量
@@ -263,7 +277,13 @@ const FLOOR_ITEM_TABLE = {
       { id: 'confusion_resist_ring', category: ITEM_CATEGORY.RING, weight: 1 },
       { id: 'storage_pot', category: ITEM_CATEGORY.POT, weight: 2 },
       { id: 'identify_pot', category: ITEM_CATEGORY.POT, weight: 1 },
-      { id: 'heal_pot', category: ITEM_CATEGORY.POT, weight: 1 }
+      { id: 'heal_pot', category: ITEM_CATEGORY.POT, weight: 1 },
+      { id: 'sleep_wand', category: ITEM_CATEGORY.WAND, weight: 2 },
+      { id: 'confusion_wand', category: ITEM_CATEGORY.WAND, weight: 2 },
+      { id: 'slow_wand', category: ITEM_CATEGORY.WAND, weight: 2 },
+      { id: 'seal_wand', category: ITEM_CATEGORY.WAND, weight: 1 },
+      { id: 'knockback_wand', category: ITEM_CATEGORY.WAND, weight: 1 },
+      { id: 'swap_wand', category: ITEM_CATEGORY.WAND, weight: 1 }
     ]
   },
   // 13-20F: 高級品がまれに出現
@@ -313,7 +333,14 @@ const FLOOR_ITEM_TABLE = {
       { id: 'storage_pot', category: ITEM_CATEGORY.POT, weight: 2 },
       { id: 'synthesis_pot', category: ITEM_CATEGORY.POT, weight: 1 },
       { id: 'heal_pot', category: ITEM_CATEGORY.POT, weight: 1 },
-      { id: 'warehouse_pot', category: ITEM_CATEGORY.POT, weight: 1 }
+      { id: 'warehouse_pot', category: ITEM_CATEGORY.POT, weight: 1 },
+      { id: 'paralyze_wand', category: ITEM_CATEGORY.WAND, weight: 2 },
+      { id: 'seal_wand', category: ITEM_CATEGORY.WAND, weight: 2 },
+      { id: 'evasion_wand', category: ITEM_CATEGORY.WAND, weight: 1 },
+      { id: 'decoy_wand', category: ITEM_CATEGORY.WAND, weight: 1 },
+      { id: 'misfortune_wand', category: ITEM_CATEGORY.WAND, weight: 1 },
+      { id: 'haste_wand', category: ITEM_CATEGORY.WAND, weight: 1 },
+      { id: 'stumble_wand', category: ITEM_CATEGORY.WAND, weight: 1 }
     ]
   }
 };
@@ -421,6 +448,24 @@ export function placeItemsOnFloor(floor, dungeon, rng, existingItems) {
         amount: goldAmount
       });
       if (gold) items.push(gold);
+    }
+  }
+
+  // モンスターハウス: 追加アイテムを密集配置
+  if (dungeon.monsterHouseRoom) {
+    const mhRoom = dungeon.monsterHouseRoom;
+    const mhItemCount = rng.nextInt(5, 10);
+    for (let i = 0; i < mhItemCount; i++) {
+      const pos = dungeon.getRandomPointInRoom(mhRoom);
+      if (dungeon.map[pos.y][pos.x] === 3) continue;
+      if (items.some(it => it.x === pos.x && it.y === pos.y)) continue;
+
+      const item = generateRandomItem(floor, rng, {
+        x: pos.x,
+        y: pos.y,
+        onFloor: true
+      });
+      if (item) items.push(item);
     }
   }
 
@@ -617,12 +662,34 @@ export function applyScrollEffect(item, player, gameState) {
       break;
 
     case 'identify':
-      // Phase 3の未識別システムで活用
-      messages.push('鑑定の巻物を読んだ。（識別システムは未実装）');
+      if (gameState) {
+        // 未識別アイテムを1つ識別
+        const unidentified = player.inventory.filter(it => !gameState.isIdentified(it));
+        if (unidentified.length > 0) {
+          const target = unidentified[0];
+          gameState.identifyItem(target);
+          messages.push(`${getItemDisplayName(target)}を識別した！`);
+        } else {
+          messages.push('鑑定の巻物を読んだが、すべて識別済みだった。');
+        }
+      }
       break;
 
     case 'identify_all':
-      messages.push('全鑑定の巻物を読んだ。（識別システムは未実装）');
+      if (gameState) {
+        let identifiedCount = 0;
+        for (const it of player.inventory) {
+          if (!gameState.isIdentified(it)) {
+            gameState.identifyItem(it);
+            identifiedCount++;
+          }
+        }
+        if (identifiedCount > 0) {
+          messages.push(`全鑑定の巻物を読んだ！${identifiedCount}個のアイテムを識別した！`);
+        } else {
+          messages.push('全鑑定の巻物を読んだが、すべて識別済みだった。');
+        }
+      }
       break;
 
     case 'warp': {

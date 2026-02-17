@@ -21,6 +21,11 @@ import {
 } from './item.js';
 import { getDungeonDef } from './data/dungeons.js';
 import { TrapManager } from './trap.js';
+import { GRASS_DATA, GRASS_FAKE_NAMES } from './data/grasses.js';
+import { SCROLL_DATA, SCROLL_FAKE_NAMES } from './data/scrolls.js';
+import { WAND_DATA, WAND_FAKE_NAMES } from './data/wands.js';
+import { POT_DATA, POT_FAKE_NAMES } from './data/pots.js';
+import { RING_DATA, RING_FAKE_NAMES } from './data/rings.js';
 
 // ゲーム状態
 export const GAME_STATE = {
@@ -84,12 +89,106 @@ export class GameState {
     this.trapManager = new TrapManager();
     this.trapManager.placeTraps(this.dungeon, this.rng, this.floor, this.dungeonDef.id);
 
+    // 未識別システム
+    this.identifiedMap = { grass: {}, scroll: {}, wand: {}, pot: {}, ring: {} };
+    this.fakeNameMap = { grass: {}, scroll: {}, wand: {}, pot: {}, ring: {} };
+    this.initIdentification();
+
+    // モンスターハウス検知
+    this.monsterHouseTriggered = false;
+
+    // 統計情報
+    this.stats = { monstersKilled: 0, itemsCollected: 0, maxFloor: 1 };
+
     // コールバック
     this.onMessage = null;
     this.onStateChange = null;
     this.onFloorChange = null;
     this.onSound = null;
     this.onEffect = null;
+  }
+
+  /**
+   * 未識別システム初期化（仮名割り当て）
+   */
+  initIdentification() {
+    const categories = [
+      { key: 'grass', data: GRASS_DATA, fakeNames: [...GRASS_FAKE_NAMES] },
+      { key: 'scroll', data: SCROLL_DATA, fakeNames: [...SCROLL_FAKE_NAMES] },
+      { key: 'wand', data: WAND_DATA, fakeNames: [...WAND_FAKE_NAMES] },
+      { key: 'pot', data: POT_DATA, fakeNames: [...POT_FAKE_NAMES] },
+      { key: 'ring', data: RING_DATA, fakeNames: [...RING_FAKE_NAMES] }
+    ];
+
+    for (const cat of categories) {
+      // 仮名をシャッフル
+      for (let i = cat.fakeNames.length - 1; i > 0; i--) {
+        const j = this.rng.nextInt(0, i);
+        [cat.fakeNames[i], cat.fakeNames[j]] = [cat.fakeNames[j], cat.fakeNames[i]];
+      }
+      // 各アイテムIDに仮名を割り当て
+      for (let i = 0; i < cat.data.length; i++) {
+        const fakeName = cat.fakeNames[i % cat.fakeNames.length];
+        this.fakeNameMap[cat.key][cat.data[i].id] = fakeName;
+      }
+    }
+  }
+
+  /**
+   * アイテムを識別済みにする
+   */
+  identifyItem(item) {
+    const cat = this.getCategoryKey(item.category);
+    if (cat && this.identifiedMap[cat]) {
+      this.identifiedMap[cat][item.id] = true;
+    }
+  }
+
+  /**
+   * アイテムが識別済みか
+   */
+  isIdentified(item) {
+    const cat = this.getCategoryKey(item.category);
+    if (!cat || !this.identifiedMap[cat]) return true; // 武器・盾・食料・矢・金は常に識別済み
+    return !!this.identifiedMap[cat][item.id];
+  }
+
+  /**
+   * カテゴリから識別対象キーを取得
+   */
+  getCategoryKey(category) {
+    switch (category) {
+      case ITEM_CATEGORY.GRASS: return 'grass';
+      case ITEM_CATEGORY.SCROLL: return 'scroll';
+      case ITEM_CATEGORY.WAND: return 'wand';
+      case ITEM_CATEGORY.POT: return 'pot';
+      case ITEM_CATEGORY.RING: return 'ring';
+      default: return null;
+    }
+  }
+
+  /**
+   * アイテムの表示名（未識別対応）
+   */
+  getDisplayName(item) {
+    if (!this.isIdentified(item)) {
+      const cat = this.getCategoryKey(item.category);
+      const fakeName = this.fakeNameMap[cat]?.[item.id];
+      if (fakeName) {
+        let name = fakeName;
+        // 杖は回数を表示
+        if (item.category === ITEM_CATEGORY.WAND && item.charges !== undefined) {
+          name += `[${item.charges}]`;
+        }
+        // 壺は容量を表示
+        if (item.category === ITEM_CATEGORY.POT && item.capacity !== undefined) {
+          name += `[${item.contents ? item.contents.length : 0}/${item.capacity}]`;
+        }
+        if (item.cursed) name += '【呪】';
+        return name;
+      }
+    }
+    return getItemDisplayName(item);
   }
 
   /**
@@ -235,6 +334,7 @@ export class GameState {
 
       if (result.killed) {
         this.emitSound('monster_death');
+        this.stats.monstersKilled++;
 
         // 乗り移りチェック（亡霊武者・悪霊武者）
         const possessResult = this.monsterManager.handlePossessOnDeath(monster, this.player);
@@ -293,12 +393,34 @@ export class GameState {
       this.checkPlayerDeath();
     }
 
+    // モンスターハウス侵入チェック
+    if (this.dungeon.monsterHouseRoom && !this.monsterHouseTriggered) {
+      const playerRoom = this.dungeon.getRoomAt(this.player.x, this.player.y);
+      const mhRoom = this.dungeon.monsterHouseRoom;
+      if (playerRoom &&
+          playerRoom.x === mhRoom.x && playerRoom.y === mhRoom.y &&
+          playerRoom.width === mhRoom.width && playerRoom.height === mhRoom.height) {
+        this.monsterHouseTriggered = true;
+        this.addMessage('モンスターハウスだ！', 'damage');
+        this.emitSound('boss_encounter');
+
+        // 部屋内の睡眠モンスターを全て起こす
+        for (const monster of this.monsters) {
+          if (!monster.isAlive) continue;
+          if (monster.x >= mhRoom.x && monster.x < mhRoom.x + mhRoom.width &&
+              monster.y >= mhRoom.y && monster.y < mhRoom.y + mhRoom.height) {
+            monster.statusEffects = monster.statusEffects.filter(e => e.type !== 'sleep');
+          }
+        }
+      }
+    }
+
     // 移動先にアイテムがあるか通知
     const itemOnFloor = this.floorItems.find(
       it => it.x === this.player.x && it.y === this.player.y
     );
     if (itemOnFloor) {
-      this.addMessage(`足元に${getItemDisplayName(itemOnFloor)}がある。`, 'info');
+      this.addMessage(`足元に${this.getDisplayName(itemOnFloor)}がある。`, 'info');
     }
 
     return true;
@@ -333,6 +455,7 @@ export class GameState {
 
       if (result.killed && target) {
         this.emitSound('monster_death');
+        this.stats.monstersKilled++;
 
         // 乗り移りチェック
         const possessResult = this.monsterManager.handlePossessOnDeath(target, this.player);
@@ -383,6 +506,7 @@ export class GameState {
       if (item.category === ITEM_CATEGORY.GOLD) {
         this.player.gold += item.amount;
         this.floorItems.splice(itemIndex, 1);
+        this.stats.itemsCollected++;
         this.addMessage(`${item.amount}銭を拾った！`, 'info');
         this.emitSound('gold_pickup');
         return true;
@@ -400,7 +524,8 @@ export class GameState {
       item.y = -1;
       this.player.inventory.push(item);
       this.floorItems.splice(itemIndex, 1);
-      this.addMessage(`${getItemDisplayName(item)}を拾った。`, 'info');
+      this.stats.itemsCollected++;
+      this.addMessage(`${this.getDisplayName(item)}を拾った。`, 'info');
       this.emitSound('item_pickup');
       return true;
     }
@@ -421,6 +546,7 @@ export class GameState {
    */
   descendStairs() {
     this.floor++;
+    this.stats.maxFloor = Math.max(this.stats.maxFloor, this.floor);
 
     if (this.floor > this.maxFloor) {
       // クリア
@@ -434,6 +560,9 @@ export class GameState {
     }
 
     this.addMessage(`${this.floor}階に降りた。`, 'important');
+
+    // モンスターハウスフラグをリセット
+    this.monsterHouseTriggered = false;
 
     // 新しいフロアを生成
     this.dungeon = new Dungeon(this.floor, this.rng, this.dungeonDef.theme).generate();
@@ -479,7 +608,7 @@ export class GameState {
 
     const item = this.floorItems.find(it => it.x === px && it.y === py);
     if (item) {
-      this.addMessage(`足元に${getItemDisplayName(item)}がある。`, 'info');
+      this.addMessage(`足元に${this.getDisplayName(item)}がある。`, 'info');
       return;
     }
 
@@ -516,6 +645,9 @@ export class GameState {
 
       case 'shoot':
         return this.shootArrow(item);
+
+      case 'use_wand':
+        return this.shootWand(item);
     }
 
     return false;
@@ -532,7 +664,7 @@ export class GameState {
         return false;
       }
       this.player.weapon = item;
-      this.addMessage(`${getItemDisplayName(item)}を装備した。`, 'info');
+      this.addMessage(`${this.getDisplayName(item)}を装備した。`, 'info');
       this.emitSound('equip');
       return true;
     }
@@ -543,7 +675,7 @@ export class GameState {
         return false;
       }
       this.player.shield = item;
-      this.addMessage(`${getItemDisplayName(item)}を装備した。`, 'info');
+      this.addMessage(`${this.getDisplayName(item)}を装備した。`, 'info');
       this.emitSound('equip');
       return true;
     }
@@ -566,7 +698,7 @@ export class GameState {
           this.player.ring1 = item;
         }
       }
-      this.addMessage(`${getItemDisplayName(item)}を装備した。`, 'info');
+      this.addMessage(`${this.getDisplayName(item)}を装備した。`, 'info');
       this.emitSound('equip');
       return true;
     }
@@ -585,28 +717,28 @@ export class GameState {
 
     if (this.player.weapon === item) {
       this.player.weapon = null;
-      this.addMessage(`${getItemDisplayName(item)}を外した。`, 'info');
+      this.addMessage(`${this.getDisplayName(item)}を外した。`, 'info');
       this.emitSound('unequip');
       return true;
     }
 
     if (this.player.shield === item) {
       this.player.shield = null;
-      this.addMessage(`${getItemDisplayName(item)}を外した。`, 'info');
+      this.addMessage(`${this.getDisplayName(item)}を外した。`, 'info');
       this.emitSound('unequip');
       return true;
     }
 
     if (this.player.ring1 === item) {
       this.player.ring1 = null;
-      this.addMessage(`${getItemDisplayName(item)}を外した。`, 'info');
+      this.addMessage(`${this.getDisplayName(item)}を外した。`, 'info');
       this.emitSound('unequip');
       return true;
     }
 
     if (this.player.ring2 === item) {
       this.player.ring2 = null;
-      this.addMessage(`${getItemDisplayName(item)}を外した。`, 'info');
+      this.addMessage(`${this.getDisplayName(item)}を外した。`, 'info');
       this.emitSound('unequip');
       return true;
     }
@@ -631,6 +763,7 @@ export class GameState {
     switch (item.category) {
       case ITEM_CATEGORY.GRASS:
         messages = applyGrassEffect(item, this.player, this);
+        this.identifyItem(item);
         removeFromInventory();
         this.emitSound('grass_use');
         // 回復系の草はヒールエフェクト
@@ -648,15 +781,18 @@ export class GameState {
       case ITEM_CATEGORY.SCROLL:
         if (item.effect === 'enhance' && targetItem) {
           messages = applyEnhanceScroll(item, targetItem);
+          this.identifyItem(item);
           removeFromInventory();
         } else if (item.effect === 'plating' && targetItem) {
           targetItem.rustproof = true;
-          messages = [`${getItemDisplayName(targetItem)}に錆止めを付けた！`];
+          messages = [`${this.getDisplayName(targetItem)}に錆止めを付けた！`];
+          this.identifyItem(item);
           removeFromInventory();
         } else {
           messages = applyScrollEffect(item, this.player, this);
           // 対象選択が必要な巻物はまだ消費しない
           if (!messages.includes('_NEED_TARGET_EQUIP') && !messages.includes('_NEED_TARGET_ITEM')) {
+            this.identifyItem(item);
             removeFromInventory();
           } else {
             // 対象選択が必要 - UI側で処理
@@ -722,7 +858,7 @@ export class GameState {
     item.onFloor = true;
     this.floorItems.push(item);
 
-    this.addMessage(`${getItemDisplayName(item)}を足元に置いた。`, 'info');
+    this.addMessage(`${this.getDisplayName(item)}を足元に置いた。`, 'info');
     return true;
   }
 
@@ -744,18 +880,18 @@ export class GameState {
     switch (pot.effect) {
       case 'storage':
         pot.contents.push(targetItem);
-        this.addMessage(`${getItemDisplayName(targetItem)}を${getItemDisplayName(pot)}に入れた。`, 'info');
+        this.addMessage(`${this.getDisplayName(targetItem)}を${this.getDisplayName(pot)}に入れた。`, 'info');
         break;
 
       case 'identify':
-        // 未識別システム用（Phase 3）- 現時点では保存のみ
         pot.contents.push(targetItem);
-        this.addMessage(`${getItemDisplayName(targetItem)}を識別した！`, 'info');
+        this.identifyItem(targetItem);
+        this.addMessage(`${this.getDisplayName(targetItem)}を識別した！`, 'info');
         break;
 
       case 'synthesis': {
         pot.contents.push(targetItem);
-        this.addMessage(`${getItemDisplayName(targetItem)}を${getItemDisplayName(pot)}に入れた。`, 'info');
+        this.addMessage(`${this.getDisplayName(targetItem)}を${this.getDisplayName(pot)}に入れた。`, 'info');
 
         // 同種装備が2つ以上入ったら合成を実行
         const weapons = pot.contents.filter(it => it.category === ITEM_CATEGORY.WEAPON);
@@ -802,7 +938,7 @@ export class GameState {
           }
 
           const newSeals = base.seals.length - sealsBefore;
-          let msg = `${getItemDisplayName(base)}に合成された！（強化値+${base.enhance}`;
+          let msg = `${this.getDisplayName(base)}に合成された！（強化値+${base.enhance}`;
           if (newSeals > 0) msg += `、印${newSeals}個移植`;
           msg += '）';
           this.addMessage(msg, 'important');
@@ -818,13 +954,13 @@ export class GameState {
 
       case 'warehouse':
         // 直接倉庫に送る（SaveManager経由）
-        this.addMessage(`${getItemDisplayName(targetItem)}を倉庫に送った！`, 'important');
+        this.addMessage(`${this.getDisplayName(targetItem)}を倉庫に送った！`, 'important');
         break;
 
       case 'curse':
         targetItem.cursed = true;
         pot.contents.push(targetItem);
-        this.addMessage(`${getItemDisplayName(targetItem)}は呪われてしまった...`, 'damage');
+        this.addMessage(`${this.getDisplayName(targetItem)}は呪われてしまった...`, 'damage');
         break;
 
       default:
@@ -852,7 +988,7 @@ export class GameState {
     // 最後のアイテムを取り出す
     const extracted = pot.contents.pop();
     this.player.inventory.push(extracted);
-    this.addMessage(`${getItemDisplayName(extracted)}を取り出した。`, 'info');
+    this.addMessage(`${this.getDisplayName(extracted)}を取り出した。`, 'info');
     return true;
   }
 
@@ -912,6 +1048,7 @@ export class GameState {
 
     if (!target.isAlive) {
       this.emitSound('monster_death');
+      this.stats.monstersKilled++;
       const prevLevel = this.player.level;
       this.player.gainExp(target.exp);
       this.addMessage(`${target.name}を倒した！経験値${target.exp}を獲得！`, 'important');
@@ -924,6 +1061,179 @@ export class GameState {
     }
 
     return true;
+  }
+
+  /**
+   * 杖を振る
+   */
+  shootWand(item) {
+    if (!item || item.category !== ITEM_CATEGORY.WAND) return false;
+
+    // 回数チェック
+    if (item.charges <= 0) {
+      this.addMessage('杖の使用回数が残っていない！', 'info');
+      return false;
+    }
+
+    // 転ばぬ先の杖はパッシブ効果のみ
+    if (item.effect === 'stumble_guard') {
+      this.addMessage('転ばぬ先の杖を振ったが、何も起こらなかった。', 'info');
+      item.charges--;
+      return true;
+    }
+
+    item.charges--;
+    const dir = this.player.direction;
+    let target = null;
+    let hitX = this.player.x;
+    let hitY = this.player.y;
+
+    // 直線上のモンスターを探す
+    for (let i = 1; i <= 10; i++) {
+      const tx = this.player.x + dir.dx * i;
+      const ty = this.player.y + dir.dy * i;
+      if (this.dungeon.isWall(tx, ty)) break;
+      hitX = tx;
+      hitY = ty;
+      const m = this.monsters.find(m => m.isAlive && m.x === tx && m.y === ty);
+      if (m) {
+        target = m;
+        break;
+      }
+    }
+
+    this.emitEffect('magic', hitX, hitY);
+    this.emitSound('magic_shot');
+
+    if (!target) {
+      this.addMessage(`${this.getDisplayName(item)}を振ったが、何にも当たらなかった。`, 'info');
+      return true;
+    }
+
+    // 効果適用
+    this.applyWandEffect(item.effect, target);
+    this.identifyItem(item);
+    return true;
+  }
+
+  /**
+   * 杖効果を適用
+   */
+  applyWandEffect(effect, monster) {
+    monster.statusEffects = monster.statusEffects || [];
+
+    switch (effect) {
+      case 'seal':
+        monster.statusEffects.push({ type: 'seal', remaining: 20 });
+        this.addMessage(`${monster.name}の特殊能力を封印した！`, 'info');
+        break;
+
+      case 'paralyze':
+        monster.statusEffects.push({ type: 'paralyze', remaining: -1 }); // 攻撃されるまで
+        this.addMessage(`${monster.name}は金縛りになった！`, 'info');
+        break;
+
+      case 'sleep':
+        monster.statusEffects.push({ type: 'sleep', remaining: 5 });
+        this.addMessage(`${monster.name}は眠りに落ちた！`, 'info');
+        break;
+
+      case 'confusion':
+        monster.statusEffects.push({ type: 'confusion', remaining: 10 });
+        this.addMessage(`${monster.name}は混乱した！`, 'info');
+        break;
+
+      case 'slow':
+        monster.statusEffects.push({ type: 'slow', remaining: 15 });
+        this.addMessage(`${monster.name}は鈍足になった！`, 'info');
+        break;
+
+      case 'haste':
+        monster.speedMultiplier = 2;
+        this.addMessage(`${monster.name}は倍速になった！`, 'info');
+        break;
+
+      case 'knockback': {
+        const dir = this.player.direction;
+        let finalX = monster.x;
+        let finalY = monster.y;
+        let hitWall = false;
+        for (let i = 1; i <= 10; i++) {
+          const nx = monster.x + dir.dx * i;
+          const ny = monster.y + dir.dy * i;
+          if (this.dungeon.isWall(nx, ny)) {
+            hitWall = true;
+            break;
+          }
+          // 他のモンスターとの衝突
+          const blocker = this.monsters.find(m => m.isAlive && m !== monster && m.x === nx && m.y === ny);
+          if (blocker) {
+            hitWall = true;
+            break;
+          }
+          finalX = nx;
+          finalY = ny;
+        }
+        monster.x = finalX;
+        monster.y = finalY;
+        if (hitWall) {
+          monster.takeDamage(10);
+          this.addMessage(`${monster.name}は吹き飛ばされて壁に激突！10ダメージ！`, 'damage');
+          if (!monster.isAlive) {
+            this.addMessage(`${monster.name}は倒れた！`, 'important');
+            this.stats.monstersKilled++;
+            this.player.gainExp(monster.exp);
+            this.monsterManager.removeDeadMonsters();
+          }
+        } else {
+          this.addMessage(`${monster.name}は吹き飛ばされた！`, 'info');
+        }
+        break;
+      }
+
+      case 'swap': {
+        const px = this.player.x;
+        const py = this.player.y;
+        this.player.x = monster.x;
+        this.player.y = monster.y;
+        monster.x = px;
+        monster.y = py;
+        this.addMessage(`${monster.name}と場所を入れ替えた！`, 'info');
+        break;
+      }
+
+      case 'decoy':
+        monster.statusEffects.push({ type: 'decoy', remaining: 10 });
+        this.addMessage(`${monster.name}は身代わり状態になった！`, 'info');
+        break;
+
+      case 'misfortune': {
+        const hpLoss = Math.floor(monster.hp * 0.3);
+        monster.hp = Math.max(1, monster.hp - hpLoss);
+        monster.maxHp = Math.max(1, Math.floor(monster.maxHp * 0.7));
+        monster.atk = Math.max(1, Math.floor(monster.atk * 0.8));
+        this.addMessage(`${monster.name}のレベルが下がった！`, 'info');
+        break;
+      }
+
+      case 'fortune':
+        monster.hp = Math.floor(monster.hp * 1.3);
+        monster.maxHp = Math.floor(monster.maxHp * 1.3);
+        monster.atk = Math.floor(monster.atk * 1.2);
+        monster.exp = Math.floor(monster.exp * 1.5);
+        this.addMessage(`${monster.name}のレベルが上がった！`, 'damage');
+        break;
+
+      case 'temp_escape': {
+        // 階段の位置にワープ + かなしばり
+        const stairsPos = this.dungeon.stairsPos;
+        monster.x = stairsPos.x;
+        monster.y = stairsPos.y;
+        monster.statusEffects.push({ type: 'paralyze', remaining: -1 });
+        this.addMessage(`${monster.name}は階段の上にワープした！`, 'info');
+        break;
+      }
+    }
   }
 
   /**

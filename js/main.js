@@ -44,6 +44,14 @@ class Game {
    * シーンを登録
    */
   setupScenes() {
+    // タイトルシーン
+    this.sceneManager.register(SCENE.TITLE, {
+      enter: () => this.enterTitle(),
+      exit: () => this.exitTitle(),
+      update: () => {},
+      render: () => {}
+    });
+
     // ダンジョンシーン
     this.sceneManager.register(SCENE.DUNGEON, {
       enter: (data) => this.enterDungeon(data),
@@ -59,6 +67,59 @@ class Game {
       update: () => {},
       render: () => {}
     });
+  }
+
+  /**
+   * タイトル画面に入る
+   */
+  enterTitle() {
+    const titleScreen = document.getElementById('title-screen');
+    const townScreen = document.getElementById('town-screen');
+    const gameWrapper = document.getElementById('game-wrapper');
+
+    if (titleScreen) titleScreen.style.display = 'flex';
+    if (townScreen) townScreen.style.display = 'none';
+    if (gameWrapper) gameWrapper.style.display = 'none';
+
+    // つづきからボタンの有効/無効
+    const continueBtn = document.getElementById('continue-btn');
+    const hasSaveData = this.saveManager.data.clearedDungeons.length > 0 ||
+      this.saveManager.data.warehouse.length > 0 ||
+      this.saveManager.data.gold > 0 ||
+      Object.keys(this.saveManager.data.bestFloors).length > 0;
+
+    if (continueBtn) {
+      continueBtn.disabled = !hasSaveData;
+    }
+
+    // ボタンイベント（重複防止のためクローン置換）
+    const newGameBtn = document.getElementById('new-game-btn');
+    if (newGameBtn) {
+      const freshNewBtn = newGameBtn.cloneNode(true);
+      newGameBtn.parentNode.replaceChild(freshNewBtn, newGameBtn);
+      freshNewBtn.addEventListener('click', () => {
+        this.sceneManager.transition(SCENE.TOWN, {});
+      });
+    }
+
+    if (continueBtn) {
+      const freshContinueBtn = continueBtn.cloneNode(true);
+      continueBtn.parentNode.replaceChild(freshContinueBtn, continueBtn);
+      freshContinueBtn.disabled = !hasSaveData;
+      freshContinueBtn.addEventListener('click', () => {
+        if (hasSaveData) {
+          this.sceneManager.transition(SCENE.TOWN, {});
+        }
+      });
+    }
+  }
+
+  /**
+   * タイトル画面を退出
+   */
+  exitTitle() {
+    const titleScreen = document.getElementById('title-screen');
+    if (titleScreen) titleScreen.style.display = 'none';
   }
 
   /**
@@ -109,8 +170,10 @@ class Game {
     this.ui.showStartMessage(dungeonDef.name);
 
     // ゲーム画面を表示
+    const gameWrapper = document.getElementById('game-wrapper');
     const gameContainer = document.getElementById('game-container');
     const sidePanel = document.getElementById('side-panel');
+    if (gameWrapper) gameWrapper.style.display = '';
     if (gameContainer) gameContainer.style.display = '';
     if (sidePanel) sidePanel.style.display = '';
 
@@ -244,7 +307,8 @@ class Game {
     if (state === GAME_STATE.GAME_OVER) {
       const result = await this.ui.showGameOver(
         this.gameState.floor,
-        this.gameState.turnCount
+        this.gameState.turnCount,
+        this.gameState.stats
       );
 
       if (result === 'town') {
@@ -258,7 +322,8 @@ class Game {
       const dungeonDef = this.gameState.dungeonDef;
       const result = await this.ui.showVictory(
         this.gameState.turnCount,
-        dungeonDef.victoryMessage
+        dungeonDef.victoryMessage,
+        this.gameState.stats
       );
 
       // クリア記録
@@ -281,8 +346,8 @@ class Game {
    * ゲームループ開始
    */
   start() {
-    // 町からスタート
-    this.sceneManager.transition(SCENE.TOWN, {});
+    // タイトル画面からスタート
+    this.sceneManager.transition(SCENE.TITLE, {});
 
     // 入力イベントベースのループ
     const gameLoop = () => {

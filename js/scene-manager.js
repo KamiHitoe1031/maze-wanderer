@@ -3,6 +3,7 @@
  */
 
 export const SCENE = {
+  TITLE: 'title',
   TOWN: 'town',
   DUNGEON: 'dungeon'
 };

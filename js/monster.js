@@ -517,6 +517,30 @@ export class MonsterManager {
         }
       }
     }
+
+    // モンスターハウス: 追加モンスターを密集配置（全員睡眠状態）
+    if (dungeon.monsterHouseRoom) {
+      const mhRoom = dungeon.monsterHouseRoom;
+      const mhCount = rng.nextInt(8, 15);
+      for (let i = 0; i < mhCount; i++) {
+        if (this.monsters.length >= this.maxMonsters) break;
+
+        let placed = false;
+        for (let attempt = 0; attempt < 20; attempt++) {
+          const pos = dungeon.getRandomPointInRoom(mhRoom);
+          if (pos.x === player.x && pos.y === player.y) continue;
+          if (this.getMonsterAt(pos.x, pos.y)) continue;
+
+          const monsterId = rng.pick(spawnableIds);
+          const monster = this.spawn(monsterId, pos.x, pos.y);
+          if (monster) {
+            monster.statusEffects.push({ type: 'sleep', remaining: -1 });
+            placed = true;
+          }
+          break;
+        }
+      }
+    }
   }
 
   /**

@@ -118,7 +118,9 @@ export class UI {
   /**
    * ゲームオーバー画面を表示
    */
-  showGameOver(floor, turnCount) {
+  showGameOver(floor, turnCount, stats = {}) {
+    const monstersKilled = stats.monstersKilled || 0;
+    const itemsCollected = stats.itemsCollected || 0;
     const overlay = document.createElement('div');
     overlay.className = 'game-overlay';
     overlay.innerHTML = `
@@ -126,6 +128,7 @@ export class UI {
         <h2>GAME OVER</h2>
         <p>冒険は${floor}階で終わった...</p>
         <p>総ターン数: ${turnCount}</p>
+        <p class="stats-line">倒したモンスター: ${monstersKilled}体 / 拾ったアイテム: ${itemsCollected}個</p>
         <div class="overlay-buttons">
           <button id="town-button">町に戻る</button>
           <button id="retry-button">リトライ</button>
@@ -151,7 +154,9 @@ export class UI {
   /**
    * クリア画面を表示
    */
-  showVictory(turnCount, victoryMessage = '踏破おめでとう！') {
+  showVictory(turnCount, victoryMessage = '踏破おめでとう！', stats = {}) {
+    const monstersKilled = stats.monstersKilled || 0;
+    const itemsCollected = stats.itemsCollected || 0;
     const overlay = document.createElement('div');
     overlay.className = 'game-overlay victory';
     overlay.innerHTML = `
@@ -159,6 +164,7 @@ export class UI {
         <h2>CONGRATULATIONS!</h2>
         <p>${victoryMessage}</p>
         <p>総ターン数: ${turnCount}</p>
+        <p class="stats-line">倒したモンスター: ${monstersKilled}体 / 拾ったアイテム: ${itemsCollected}個</p>
         <div class="overlay-buttons">
           <button id="town-button">町に戻る</button>
           <button id="restart-button">もう一度挑戦</button>
@@ -225,6 +231,11 @@ export class UI {
       .game-overlay-content p {
         margin-bottom: 12px;
         font-size: 16px;
+      }
+
+      .game-overlay-content .stats-line {
+        font-size: 13px;
+        color: #aaa;
       }
 
       .overlay-buttons {
@@ -310,10 +321,11 @@ export class UI {
     // 装備表示
     const equipInfo = document.createElement('div');
     equipInfo.className = 'equip-info';
-    const weaponName = player.weapon ? getItemDisplayName(player.weapon) : 'なし';
-    const shieldName = player.shield ? getItemDisplayName(player.shield) : 'なし';
-    const ring1Name = player.ring1 ? getItemDisplayName(player.ring1) : 'なし';
-    const ring2Name = player.ring2 ? getItemDisplayName(player.ring2) : 'なし';
+    const dn = (it) => gameState?.getDisplayName ? gameState.getDisplayName(it) : getItemDisplayName(it);
+    const weaponName = player.weapon ? dn(player.weapon) : 'なし';
+    const shieldName = player.shield ? dn(player.shield) : 'なし';
+    const ring1Name = player.ring1 ? dn(player.ring1) : 'なし';
+    const ring2Name = player.ring2 ? dn(player.ring2) : 'なし';
     equipInfo.innerHTML = `<span>武器: ${weaponName}</span> <span>盾: ${shieldName}</span>`;
     if (player.ring1 || player.ring2) {
       equipInfo.innerHTML += `<br><span>腕輪: ${ring1Name} / ${ring2Name}</span>`;
@@ -377,7 +389,7 @@ export class UI {
         // アイテム名テキスト
         const nameSpan = document.createElement('span');
         nameSpan.className = 'inventory-item-name';
-        nameSpan.textContent = getItemDisplayName(item);
+        nameSpan.textContent = gameState?.getDisplayName ? gameState.getDisplayName(item) : getItemDisplayName(item);
         row.appendChild(nameSpan);
         row.dataset.index = i;
         row.addEventListener('click', () => {
@@ -553,6 +565,10 @@ export class UI {
       case ITEM_CATEGORY.ARROW:
         actions.push({ action: 'shoot', label: '撃つ' });
         break;
+
+      case ITEM_CATEGORY.WAND:
+        actions.push({ action: 'use_wand', label: '振る' });
+        break;
     }
 
     actions.push({ action: 'drop', label: '置く' });
@@ -603,6 +619,10 @@ export class UI {
 
       case 'shoot':
         this.closeInventory({ action: 'shoot', item });
+        break;
+
+      case 'use_wand':
+        this.closeInventory({ action: 'use_wand', item });
         break;
     }
   }
@@ -668,6 +688,7 @@ function getCategorySymbol(category) {
     case ITEM_CATEGORY.RING: return '=';
     case ITEM_CATEGORY.POT: return '{';
     case ITEM_CATEGORY.ARROW: return '-';
+    case ITEM_CATEGORY.WAND: return '/';
     case ITEM_CATEGORY.GOLD: return '$';
     default: return ' ';
   }
