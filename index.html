@@ -7,27 +7,54 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div id="game-container">
-    <!-- ステータスバー -->
-    <div id="status-bar">
-      <div class="status-row">
-        <span id="floor-display">フロア: 1F</span>
-        <span id="level-display">Lv: 1</span>
-        <span id="hp-display">HP: 15/15</span>
+  <div id="game-wrapper">
+    <div id="game-container">
+      <!-- ステータスバー -->
+      <div id="status-bar">
+        <div class="status-row">
+          <span id="floor-display">フロア: 1F</span>
+          <span id="level-display">Lv: 1</span>
+          <span id="hp-display">HP: 15/15</span>
+        </div>
+        <div class="status-row">
+          <span id="strength-display">ちから: 8</span>
+          <span id="fullness-display">満腹度: 100/100</span>
+          <span id="gold-display">銭: 0</span>
+        </div>
       </div>
-      <div class="status-row">
-        <span id="strength-display">ちから: 8</span>
-        <span id="fullness-display">満腹度: 100/100</span>
-        <span id="gold-display">銭: 0</span>
+
+      <!-- メインキャンバス -->
+      <canvas id="game-canvas"></canvas>
+
+      <!-- メッセージログ -->
+      <div id="message-log">
+        <div id="messages"></div>
       </div>
     </div>
 
-    <!-- メインキャンバス -->
-    <canvas id="game-canvas"></canvas>
-
-    <!-- メッセージログ -->
-    <div id="message-log">
-      <div id="messages"></div>
+    <!-- 操作ガイド -->
+    <div id="controls-panel">
+      <div class="controls-title">操作方法</div>
+      <div class="controls-section">
+        <div class="controls-heading">移動</div>
+        <div class="controls-grid">
+          <span class="key">Q</span><span class="key">W</span><span class="key">E</span>
+          <span class="key">A</span><span class="key-blank"></span><span class="key">D</span>
+          <span class="key">Z</span><span class="key">S</span><span class="key">C</span>
+        </div>
+        <div class="controls-note">矢印キー / テンキーも可</div>
+      </div>
+      <div class="controls-section">
+        <div class="controls-heading">行動</div>
+        <div class="controls-list">
+          <div><span class="key-inline">Space</span> 待機</div>
+          <div><span class="key-inline">Enter</span> 拾う / 階段</div>
+          <div><span class="key-inline">F</span> 攻撃</div>
+          <div><span class="key-inline">I</span> インベントリ</div>
+          <div><span class="key-inline">X</span> 足元を調べる</div>
+          <div><span class="key-inline">M</span> ミュート切替</div>
+        </div>
+      </div>
     </div>
   </div>
 

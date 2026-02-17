@@ -17,6 +17,12 @@ body {
   overflow: hidden;
 }
 
+#game-wrapper {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
 #game-container {
   display: flex;
   flex-direction: column;
@@ -26,6 +32,93 @@ body {
   background-color: #16213e;
   border: 2px solid #4a5568;
   border-radius: 8px;
+}
+
+/* 操作ガイドパネル */
+#controls-panel {
+  background-color: #16213e;
+  border: 2px solid #4a5568;
+  border-radius: 8px;
+  padding: 14px;
+  width: 170px;
+  font-size: 12px;
+}
+
+.controls-title {
+  text-align: center;
+  color: #ffcc00;
+  font-size: 14px;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #4a5568;
+}
+
+.controls-section {
+  margin-bottom: 12px;
+}
+
+.controls-heading {
+  color: #88aaff;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  width: 108px;
+  margin: 0 auto 4px;
+}
+
+.controls-grid .key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  background-color: #2a3a5e;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 13px;
+}
+
+.controls-grid .key-blank {
+  width: 32px;
+  height: 28px;
+}
+
+.controls-note {
+  text-align: center;
+  color: #666;
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.controls-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: #c0c0c0;
+}
+
+.controls-list div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.key-inline {
+  display: inline-block;
+  background-color: #2a3a5e;
+  border: 1px solid #4a5568;
+  border-radius: 3px;
+  padding: 1px 6px;
+  color: #e0e0e0;
+  font-size: 11px;
+  min-width: 28px;
+  text-align: center;
 }
 
 /* ステータスバー */
