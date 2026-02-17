@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>迷境の旅人 - 遊び方ガイド</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #1a1a2e;
+      color: #e0e0e0;
+      font-family: 'MS Gothic', 'Courier New', monospace;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ヘッダー */
+    .guide-header {
+      background-color: #0f0f23;
+      border-bottom: 2px solid #4a5568;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .guide-header h1 {
+      color: #ffcc00;
+      font-size: 22px;
+      letter-spacing: 2px;
+    }
+
+    .back-link {
+      color: #88aaff;
+      text-decoration: none;
+      font-size: 14px;
+      border: 1px solid #88aaff;
+      padding: 6px 14px;
+      border-radius: 4px;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .back-link:hover {
+      background-color: #88aaff;
+      color: #0f0f23;
+    }
+
+    /* メインコンテンツ */
+    .guide-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+    }
+
+    /* セクション */
+    .guide-section {
+      background-color: #16213e;
+      border: 1px solid #4a5568;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .guide-section h2 {
+      color: #ffcc00;
+      font-size: 18px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #4a5568;
+      letter-spacing: 1px;
+    }
+
+    .guide-section h3 {
+      color: #88aaff;
+      font-size: 15px;
+      margin-top: 18px;
+      margin-bottom: 10px;
+    }
+
+    .guide-section p {
+      margin-bottom: 12px;
+      color: #c8c8c8;
+      font-size: 14px;
+    }
+
+    .guide-section ul {
+      margin-left: 20px;
+      margin-bottom: 12px;
+    }
+
+    .guide-section li {
+      margin-bottom: 6px;
+      color: #c8c8c8;
+      font-size: 14px;
+    }
+
+    /* 概要セクションのレイアウト */
+    .overview-layout {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .overview-text {
+      flex: 1;
+    }
+
+    .overview-image {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .overview-image img {
+      width: 96px;
+      height: 96px;
+      image-rendering: pixelated;
+      border: 2px solid #4a5568;
+      border-radius: 4px;
+      background-color: #0f0f23;
+    }
+
+    .overview-image span {
+      font-size: 11px;
+      color: #888;
+    }
+
+    /* ハイライトボックス */
+    .highlight-box {
+      background-color: #0f0f23;
+      border-left: 3px solid #ffcc00;
+      padding: 12px 16px;
+      border-radius: 0 4px 4px 0;
+      margin: 12px 0;
+    }
+
+    .highlight-box p {
+      margin-bottom: 0;
+      color: #ffcc00;
+      font-size: 13px;
+    }
+
+    /* 操作グリッド */
+    .controls-area {
+      display: flex;
+      gap: 32px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .movement-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      width: 138px;
+    }
+
+    .key {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 36px;
+      background-color: #2a3a5e;
+      border: 1px solid #4a5568;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-size: 15px;
+      font-weight: bold;
+    }
+
+    .key-blank {
+      width: 42px;
+      height: 36px;
+    }
+
+    .controls-sublabel {
+      font-size: 11px;
+      color: #666;
+      text-align: center;
+      margin-top: 2px;
+    }
+
+    /* アクションキー一覧 */
+    .action-keys {
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .action-keys-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .action-key-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .key-inline {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #2a3a5e;
+      border: 1px solid #4a5568;
+      border-radius: 4px;
+      padding: 3px 10px;
+      color: #e0e0e0;
+      font-size: 13px;
+      min-width: 48px;
+      text-align: center;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    /* タイル/アイテム/モンスター ギャラリー */
+    .sprite-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .sprite-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: #0f0f23;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #2a3a5e;
+    }
+
+    .sprite-card img {
+      width: 48px;
+      height: 48px;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+      border-radius: 2px;
+    }
+
+    .sprite-card .sprite-label {
+      font-size: 13px;
+      color: #e0e0e0;
+      line-height: 1.3;
+    }
+
+    .sprite-card .sprite-sub {
+      font-size: 11px;
+      color: #888;
+    }
+
+    /* アイテム説明付きギャラリー */
+    .item-gallery {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background-color: #0f0f23;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1px solid #2a3a5e;
+    }
+
+    .item-row img {
+      width: 48px;
+      height: 48px;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+      border-radius: 2px;
+    }
+
+    .item-info {
+      flex: 1;
+    }
+
+    .item-name {
+      font-size: 14px;
+      color: #ffcc00;
+      margin-bottom: 2px;
+    }
+
+    .item-desc {
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    /* ヒントリスト */
+    .tips-list {
+      list-style: none;
+      margin-left: 0;
+      counter-reset: tip-counter;
+    }
+
+    .tips-list li {
+      position: relative;
+      padding-left: 28px;
+      margin-bottom: 10px;
+    }
+
+    .tips-list li::before {
+      content: counter(tip-counter);
+      counter-increment: tip-counter;
+      position: absolute;
+      left: 0;
+      top: 1px;
+      width: 20px;
+      height: 20px;
+      background-color: #2a3a5e;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #ffcc00;
+      line-height: 20px;
+      text-align: center;
+    }
+
+    /* 戦闘のコツ */
+    .combat-tips {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .combat-tip {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      color: #c8c8c8;
+    }
+
+    .combat-tip .tip-icon {
+      color: #88aaff;
+      font-size: 16px;
+      flex-shrink: 0;
+      width: 20px;
+      text-align: center;
+    }
+
+    /* フッター */
+    .guide-footer {
+      text-align: center;
+      padding: 24px;
+      color: #555;
+      font-size: 12px;
+      border-top: 1px solid #2a3a5e;
+      margin-top: 8px;
+    }
+
+    /* ナビゲーション（目次） */
+    .guide-nav {
+      background-color: #16213e;
+      border: 1px solid #4a5568;
+      border-radius: 8px;
+      padding: 16px 24px;
+      margin-bottom: 24px;
+    }
+
+    .guide-nav h3 {
+      color: #88aaff;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .guide-nav ul {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+    }
+
+    .guide-nav a {
+      color: #88aaff;
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.2s;
+    }
+
+    .guide-nav a:hover {
+      color: #ffcc00;
+    }
+
+    /* レスポンシブ */
+    @media (max-width: 600px) {
+      .guide-header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+
+      .guide-header h1 {
+        font-size: 18px;
+      }
+
+      .overview-layout {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .controls-area {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .sprite-gallery {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .guide-nav ul {
+        flex-direction: column;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <header class="guide-header">
+    <h1>迷境の旅人 - 遊び方ガイド</h1>
+    <a href="index.html" class="back-link">ゲームに戻る</a>
+  </header>
+
+  <main class="guide-content">
+
+    <!-- 目次 -->
+    <nav class="guide-nav">
+      <h3>目次</h3>
+      <ul>
+        <li><a href="#overview">ゲーム概要</a></li>
+        <li><a href="#controls">基本操作</a></li>
+        <li><a href="#screen">画面の見方</a></li>
+        <li><a href="#items">アイテムの種類</a></li>
+        <li><a href="#combat">戦闘のコツ</a></li>
+        <li><a href="#tips">サバイバルのヒント</a></li>
+      </ul>
+    </nav>
+
+    <!-- ゲーム概要 -->
+    <section id="overview" class="guide-section">
+      <h2>ゲーム概要</h2>
+      <div class="overview-layout">
+        <div class="overview-text">
+          <p>
+            「迷境の旅人」は、ターン制のローグライクダンジョンRPGです。
+            プレイヤーが1歩動くと、敵も1歩動く。じっくり考えて行動できるのが特徴です。
+          </p>
+          <p>
+            目標は、全20階からなるダンジョン「霧幻の塔」を踏破すること。
+            フロアごとに自動生成されるダンジョンを探索し、モンスターと戦い、
+            アイテムを活用して最深部を目指しましょう。
+          </p>
+          <div class="highlight-box">
+            <p>
+              注意：倒れたら全てを失い、レベル1からやり直しになります。
+              慎重な判断と、時には撤退する勇気が大切です。
+            </p>
+          </div>
+        </div>
+        <div class="overview-image">
+          <img src="assets/characters/player.png" alt="プレイヤー">
+          <span>あなたの分身</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 基本操作 -->
+    <section id="controls" class="guide-section">
+      <h2>基本操作</h2>
+      <div class="controls-area">
+        <div class="movement-controls">
+          <h3 style="margin-top: 0;">移動（8方向）</h3>
+          <div class="controls-grid">
+            <span class="key">Q</span>
+            <span class="key">W</span>
+            <span class="key">E</span>
+            <span class="key">A</span>
+            <span class="key-blank"></span>
+            <span class="key">D</span>
+            <span class="key">Z</span>
+            <span class="key">S</span>
+            <span class="key">C</span>
+          </div>
+          <div class="controls-sublabel">矢印キー / テンキーでも移動可能</div>
+        </div>
+
+        <div class="action-keys">
+          <h3 style="margin-top: 0;">行動キー</h3>
+          <div class="action-keys-list">
+            <div class="action-key-item">
+              <span class="key-inline">Space</span>
+              <span>その場で待機（1ターン経過）</span>
+            </div>
+            <div class="action-key-item">
+              <span class="key-inline">Enter</span>
+              <span>足元のアイテムを拾う / 階段を降りる</span>
+            </div>
+            <div class="action-key-item">
+              <span class="key-inline">F</span>
+              <span>向いている方向に攻撃</span>
+            </div>
+            <div class="action-key-item">
+              <span class="key-inline">I</span>
+              <span>インベントリ（持ち物）を開く</span>
+            </div>
+            <div class="action-key-item">
+              <span class="key-inline">X</span>
+              <span>足元を調べる</span>
+            </div>
+            <div class="action-key-item">
+              <span class="key-inline">M</span>
+              <span>BGM/SEのミュート切替</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 画面の見方 -->
+    <section id="screen" class="guide-section">
+      <h2>画面の見方</h2>
+
+      <h3>マップタイル</h3>
+      <p>ダンジョンは以下のタイルで構成されています。</p>
+      <div class="sprite-gallery">
+        <div class="sprite-card">
+          <img src="assets/tiles/floor.png" alt="部屋の床">
+          <div>
+            <div class="sprite-label">部屋の床</div>
+            <div class="sprite-sub">安全に歩ける場所</div>
+          </div>
+        </div>
+        <div class="sprite-card">
+          <img src="assets/tiles/corridor.png" alt="通路">
+          <div>
+            <div class="sprite-label">通路</div>
+            <div class="sprite-sub">部屋と部屋を繋ぐ</div>
+          </div>
+        </div>
+        <div class="sprite-card">
+          <img src="assets/tiles/wall.png" alt="壁">
+          <div>
+            <div class="sprite-label">壁</div>
+            <div class="sprite-sub">通り抜け不可</div>
+          </div>
+        </div>
+        <div class="sprite-card">
+          <img src="assets/tiles/stairs.png" alt="階段">
+          <div>
+            <div class="sprite-label">階段</div>
+            <div class="sprite-sub">次のフロアへ進む</div>
+          </div>
+        </div>
+        <div class="sprite-card">
+          <img src="assets/tiles/trap.png" alt="罠">
+          <div>
+            <div class="sprite-label">罠</div>
+            <div class="sprite-sub">踏むと効果が発動</div>
+          </div>
+        </div>
+      </div>
+
+      <h3>キャラクター</h3>
+      <div class="sprite-gallery">
+        <div class="sprite-card">
+          <img src="assets/characters/player.png" alt="プレイヤー">
+          <div>
+            <div class="sprite-label">プレイヤー</div>
+            <div class="sprite-sub">あなた自身 (@)</div>
+          </div>
+        </div>
+        <div class="sprite-card">
+          <img src="assets/characters/shopkeeper.png" alt="店主">
+          <div>
+            <div class="sprite-label">店主</div>
+            <div class="sprite-sub">アイテムを売買</div>
+          </div>
+        </div>
+      </div>
+
+      <h3>モンスター（一部）</h3>
+      <p>ダンジョンには多くのモンスターが潜んでいます。深い階層ほど強敵が出現します。</p>
+      <div class="sprite-gallery">
+        <div class="sprite-card">
+          <img src="assets/monsters/green_slime.png" alt="緑スライム">
+          <div>
+            <div class="sprite-label">緑スライム</div>
+            <div class="sprite-sub">序盤の敵</div>
+          </div>
+        </div>
+        <div class="sprite-card">
+          <img src="assets/monsters/rat.png" alt="ネズミ小僧">
+          <div>
+            <div class="sprite-label">ネズミ小僧</div>
+            <div class="sprite-sub">アイテムを盗む</div>
+          </div>
+        </div>
+        <div class="sprite-card">
+          <img src="assets/monsters/fire_dragon.png" alt="火竜">
+          <div>
+            <div class="sprite-label">火竜</div>
+            <div class="sprite-sub">炎のブレスに注意</div>
+          </div>
+        </div>
+        <div class="sprite-card">
+          <img src="assets/monsters/demon_king.png" alt="魔王">
+          <div>
+            <div class="sprite-label">魔王</div>
+            <div class="sprite-sub">最強のボス</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- アイテムの種類 -->
+    <section id="items" class="guide-section">
+      <h2>アイテムの種類</h2>
+      <p>ダンジョン内では様々なアイテムが手に入ります。上手に活用して生き残りましょう。</p>
+
+      <div class="item-gallery">
+        <div class="item-row">
+          <img src="assets/items/weapon.png" alt="武器">
+          <div class="item-info">
+            <div class="item-name">武器</div>
+            <div class="item-desc">攻撃力がアップする装備品。インベントリから「装備」して使います。強化値（+N）が高いほど強力です。</div>
+          </div>
+        </div>
+        <div class="item-row">
+          <img src="assets/items/shield.png" alt="盾">
+          <div class="item-info">
+            <div class="item-name">盾</div>
+            <div class="item-desc">防御力がアップする装備品。インベントリから「装備」して使います。敵の攻撃ダメージを軽減できます。</div>
+          </div>
+        </div>
+        <div class="item-row">
+          <img src="assets/items/grass.png" alt="草">
+          <div class="item-info">
+            <div class="item-name">草</div>
+            <div class="item-desc">飲んで効果を得る消耗品。HPを回復する薬草、レベルが上がるしあわせ草など、種類は様々です。</div>
+          </div>
+        </div>
+        <div class="item-row">
+          <img src="assets/items/scroll.png" alt="巻物">
+          <div class="item-info">
+            <div class="item-name">巻物</div>
+            <div class="item-desc">読んで効果を発動するアイテム。周囲のモンスターを眠らせたり、装備を強化したりできます。</div>
+          </div>
+        </div>
+        <div class="item-row">
+          <img src="assets/items/food.png" alt="食料">
+          <div class="item-info">
+            <div class="item-name">食料</div>
+            <div class="item-desc">満腹度を回復するアイテム。満腹度がゼロになるとHPが減り続けるので、食料の確保は最重要です。</div>
+          </div>
+        </div>
+        <div class="item-row">
+          <img src="assets/items/gold.png" alt="お金">
+          <div class="item-info">
+            <div class="item-name">お金（銭）</div>
+            <div class="item-desc">ダンジョン内の店でアイテムを購入するのに使います。フロアに落ちていることがあります。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="highlight-box" style="margin-top: 16px;">
+        <p>
+          草・巻物などは最初「未識別」の状態です。使ってみるまで正体がわかりません。
+          識別の巻物を使うか、実際に使用して効果を確かめましょう。
+        </p>
+      </div>
+    </section>
+
+    <!-- 戦闘のコツ -->
+    <section id="combat" class="guide-section">
+      <h2>戦闘のコツ</h2>
+      <div class="combat-tips">
+        <div class="combat-tip">
+          <span class="tip-icon">1</span>
+          <span>
+            <strong>ターン制を理解しよう</strong> --
+            あなたが1回行動すると、全てのモンスターも1回行動します。
+            落ち着いて次の一手を考えましょう。
+          </span>
+        </div>
+        <div class="combat-tip">
+          <span class="tip-icon">2</span>
+          <span>
+            <strong>攻撃方法</strong> --
+            敵のいる方向に移動するか、<span class="key-inline" style="display: inline; padding: 1px 6px; min-width: auto; font-size: 12px;">F</span>キーで向いている方向に攻撃できます。
+          </span>
+        </div>
+        <div class="combat-tip">
+          <span class="tip-icon">3</span>
+          <span>
+            <strong>HP自然回復</strong> --
+            部屋の中では数ターンごとにHPが少しずつ回復します。
+            余裕があれば足踏み（Spaceキー）で回復を待ちましょう。
+          </span>
+        </div>
+        <div class="combat-tip">
+          <span class="tip-icon">4</span>
+          <span>
+            <strong>満腹度に注意</strong> --
+            10ターンに1ずつ満腹度が減少します。満腹度が0になると毎ターンHPが減り続けます。
+            おにぎりなどの食料を常に確保しましょう。
+          </span>
+        </div>
+        <div class="combat-tip">
+          <span class="tip-icon">5</span>
+          <span>
+            <strong>装備を忘れずに</strong> --
+            武器と盾を拾ったら、<span class="key-inline" style="display: inline; padding: 1px 6px; min-width: auto; font-size: 12px;">I</span>キーでインベントリを開き、
+            必ず「装備」しましょう。装備するだけで戦闘が格段に楽になります。
+          </span>
+        </div>
+        <div class="combat-tip">
+          <span class="tip-icon">6</span>
+          <span>
+            <strong>通路を活用</strong> --
+            通路では敵と1対1で戦えます。部屋の中で複数の敵に囲まれそうなときは、
+            通路に誘い込んで各個撃破しましょう。
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- サバイバルのヒント -->
+    <section id="tips" class="guide-section">
+      <h2>サバイバルのヒント</h2>
+      <p>初心者が生き残るための大切なポイントをまとめました。</p>
+
+      <ol class="tips-list">
+        <li>
+          <strong style="color: #ffcc00;">食料は命綱</strong><br>
+          おにぎりを見つけたら必ず確保しましょう。満腹度がゼロになると、じわじわとHPが削られて詰みます。
+        </li>
+        <li>
+          <strong style="color: #ffcc00;">拾った装備はすぐ装備</strong><br>
+          今持っている武器・盾より強いものを見つけたら、迷わず装備を切り替えましょう。攻撃力と防御力はダンジョン攻略の基本です。
+        </li>
+        <li>
+          <strong style="color: #ffcc00;">全ての敵と戦う必要はない</strong><br>
+          HPが少ない時や強敵が相手の時は、逃げるのも立派な戦略です。
+          階段を見つけたら、無理に探索を続けず次のフロアに進むことも検討しましょう。
+        </li>
+        <li>
+          <strong style="color: #ffcc00;">草と巻物は慎重に使う</strong><br>
+          未識別のアイテムは、安全な状況で試しましょう。いざという時のために強力なアイテムは温存するのも手です。
+        </li>
+        <li>
+          <strong style="color: #ffcc00;">階段は保険</strong><br>
+          フロアの階段の位置を見つけたら覚えておきましょう。ピンチの時にすぐ逃げ込めます。
+          ただし、レベル上げが不十分なまま先に進むと後で苦労します。
+        </li>
+        <li>
+          <strong style="color: #ffcc00;">通路の罠に気をつけろ</strong><br>
+          通路には見えない罠が隠れていることがあります。毒矢、落とし穴、地雷など、
+          踏むと厄介なものばかりです。足元を調べる習慣をつけましょう。
+        </li>
+      </ol>
+
+      <div class="highlight-box" style="margin-top: 16px;">
+        <p>
+          死んで覚えるのがローグライクの醍醐味です。
+          失敗を恐れず、何度でも挑戦しましょう！
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- フッター -->
+  <footer class="guide-footer">
+    迷境の旅人 &copy; 2026
+  </footer>
+
+</body>
+</html>
