@@ -91,6 +91,11 @@ class Game {
       this.sound.play(soundKey);
     };
 
+    // エフェクトコールバック
+    this.gameState.onEffect = ({ effectKey, x, y }) => {
+      this.renderer.drawAttackEffect(x, y, null, effectKey);
+    };
+
     // 全画像ロード完了時に再描画
     this.renderer.spriteManager.onAllLoaded = () => {
       this.renderDungeon();

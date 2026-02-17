@@ -89,6 +89,7 @@ export class GameState {
     this.onStateChange = null;
     this.onFloorChange = null;
     this.onSound = null;
+    this.onEffect = null;
   }
 
   /**
@@ -105,6 +106,36 @@ export class GameState {
   emitSound(soundKey) {
     if (this.onSound) {
       this.onSound(soundKey);
+    }
+  }
+
+  /**
+   * エフェクトイベントを発火
+   * @param {string} effectKey - エフェクトキー（'slash','damage','fire_breath'等）
+   * @param {number} x - ワールドX座標
+   * @param {number} y - ワールドY座標
+   */
+  emitEffect(effectKey, x, y) {
+    if (this.onEffect) {
+      this.onEffect({ effectKey, x, y });
+    }
+  }
+
+  /**
+   * 装備中武器に対応するエフェクトキーを取得
+   */
+  getWeaponEffectKey() {
+    const weapon = this.player.weapon;
+    if (!weapon) return 'slash';
+    switch (weapon.attackType) {
+      case 'bow':       return 'bullet';
+      case 'spear':     return 'slash';
+      case 'whip':      return 'wind';
+      case 'hammer':    return 'blunt';
+      case 'dagger':    return 'slash';
+      case 'boomerang': return 'wind';
+      case 'kamaitachi': return 'wind';
+      default:          return 'slash';
     }
   }
 
@@ -178,6 +209,10 @@ export class GameState {
       this.addMessage(result.message, result.hit ? 'damage' : 'info');
       this.emitSound(result.hit ? 'slash' : 'miss');
 
+      if (result.hit) {
+        this.emitEffect(this.getWeaponEffectKey(), monster.x, monster.y);
+      }
+
       // 分裂チェック（攻撃が命中し、まだ生きている場合）
       if (result.hit && monster.isAlive) {
         const splitResult = this.monsterManager.handleSplit(monster, this.dungeon, this.player);
@@ -199,6 +234,7 @@ export class GameState {
         this.player.gainExp(result.exp);
         if (this.player.level > prevLevel) {
           this.emitSound('levelup');
+          this.emitEffect('levelup', this.player.x, this.player.y);
           this.addMessage(`レベルが${this.player.level}に上がった！`, 'important');
         }
         this.monsterManager.removeDeadMonsters();
@@ -271,6 +307,10 @@ export class GameState {
 
       const target = result.target;
 
+      if (result.hit && target) {
+        this.emitEffect(this.getWeaponEffectKey(), target.x, target.y);
+      }
+
       // 分裂チェック
       if (target && result.hit && target.isAlive) {
         const splitResult = this.monsterManager.handleSplit(target, this.dungeon, this.player);
@@ -298,6 +338,7 @@ export class GameState {
       this.player.gainExp(totalExp);
       if (this.player.level > prevLevel) {
         this.emitSound('levelup');
+        this.emitEffect('levelup', this.player.x, this.player.y);
         this.addMessage(`レベルが${this.player.level}に上がった！`, 'important');
       }
       this.monsterManager.removeDeadMonsters();
@@ -580,6 +621,10 @@ export class GameState {
         messages = applyGrassEffect(item, this.player, this);
         removeFromInventory();
         this.emitSound('grass_use');
+        // 回復系の草はヒールエフェクト
+        if (['heal_grass', 'good_grass', 'revival_grass', 'forest_herb', 'sea_kelp'].includes(item.id)) {
+          this.emitEffect('heal', this.player.x, this.player.y);
+        }
         break;
 
       case ITEM_CATEGORY.FOOD:
@@ -614,6 +659,7 @@ export class GameState {
           const healAmount = 50 + item.contents.length * 30;
           this.player.heal(healAmount);
           messages = [`回復の壺を割った！HPが${healAmount}回復した！`];
+          this.emitEffect('heal', this.player.x, this.player.y);
           removeFromInventory();
         } else {
           this.addMessage('それは使えない。', 'info');
@@ -780,6 +826,7 @@ export class GameState {
     const damage = Math.max(1, item.baseDamage);
     target.takeDamage(damage);
     this.addMessage(`${target.name}に${item.name}が当たり${damage}のダメージ！`, 'damage');
+    this.emitEffect('bullet', target.x, target.y);
 
     // 矢の特殊効果
     if (item.arrowEffect === 'poison' && target.isAlive) {
@@ -801,6 +848,7 @@ export class GameState {
       this.addMessage(`${target.name}を倒した！経験値${target.exp}を獲得！`, 'important');
       if (this.player.level > prevLevel) {
         this.emitSound('levelup');
+        this.emitEffect('levelup', this.player.x, this.player.y);
         this.addMessage(`レベルが${this.player.level}に上がった！`, 'important');
       }
       this.monsterManager.removeDeadMonsters();
@@ -841,6 +889,7 @@ export class GameState {
       }
       if (result.hit) {
         this.emitSound('player_hit');
+        this.emitEffect(result.effectKey || 'damage', this.player.x, this.player.y);
       }
     }
 

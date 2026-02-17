@@ -591,7 +591,8 @@ export class MonsterManager {
             results.push({
               hit: true,
               message: `${monster.name}に${stolen.name || 'アイテム'}を盗まれた！`,
-              damage: 0
+              damage: 0,
+              effectKey: 'steal'
             });
             // タヌキはワープする
             this.warpMonster(monster, gameState);
@@ -613,7 +614,8 @@ export class MonsterManager {
           results.push({
             hit: true,
             message: `${monster.name}に${stolen.name || 'アイテム'}を盗まれた！`,
-            damage: 0
+            damage: 0,
+            effectKey: 'steal'
           });
           this.warpMonster(monster, gameState);
         }
@@ -681,6 +683,7 @@ export class MonsterManager {
         return {
           hit: true,
           damage: damage,
+          effectKey: 'fire_breath',
           message: `${monster.name}が炎を吐いた！${damage}のダメージ！`
         };
       }
@@ -691,6 +694,7 @@ export class MonsterManager {
         return {
           hit: true,
           damage: damage,
+          effectKey: 'bullet',
           message: `${monster.name}が弾を撃ってきた！${damage}のダメージ！`
         };
       }
@@ -735,6 +739,7 @@ export class MonsterManager {
         return {
           hit: dist <= range,
           damage: typeof damage === 'number' ? damage : 0,
+          effectKey: 'explosion',
           message: `${monster.name}が爆発した！${dist <= range ? dmgText + '！' : ''}`
         };
       }
@@ -772,6 +777,7 @@ export class MonsterManager {
         return {
           hit: true,
           damage: damage,
+          effectKey: 'magic',
           message: `${monster.name}が暗黒の力を放った！${damage}のダメージ！`
         };
       }
