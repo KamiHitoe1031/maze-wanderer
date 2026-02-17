@@ -6,7 +6,7 @@ export const SHIELD_DATA = [
   {
     id: 'wooden_shield',
     name: '木の盾',
-    spriteKey: 'item.shield',
+    spriteKey: 'item.shield.wooden_shield',
     baseDef: 2,
     buyPrice: 300,
     sellPrice: 90,
@@ -17,7 +17,7 @@ export const SHIELD_DATA = [
   {
     id: 'copper_shield',
     name: '銅の盾',
-    spriteKey: 'item.shield',
+    spriteKey: 'item.shield.copper_shield',
     baseDef: 4,
     buyPrice: 600,
     sellPrice: 180,
@@ -28,7 +28,7 @@ export const SHIELD_DATA = [
   {
     id: 'iron_shield',
     name: '鉄の盾',
-    spriteKey: 'item.shield',
+    spriteKey: 'item.shield.iron_shield',
     baseDef: 6,
     buyPrice: 1500,
     sellPrice: 450,
@@ -39,7 +39,7 @@ export const SHIELD_DATA = [
   {
     id: 'steel_shield',
     name: '鋼鉄の盾',
-    spriteKey: 'item.shield',
+    spriteKey: 'item.shield.steel_shield',
     baseDef: 9,
     buyPrice: 3000,
     sellPrice: 900,
@@ -50,7 +50,7 @@ export const SHIELD_DATA = [
   {
     id: 'evasion_shield',
     name: '見切りの盾',
-    spriteKey: 'item.shield',
+    spriteKey: 'item.shield.evasion_shield',
     baseDef: 3,
     buyPrice: 5000,
     sellPrice: 1500,
@@ -61,7 +61,7 @@ export const SHIELD_DATA = [
   {
     id: 'antidote_shield',
     name: '毒消しの盾',
-    spriteKey: 'item.shield',
+    spriteKey: 'item.shield.antidote_shield',
     baseDef: 3,
     buyPrice: 5000,
     sellPrice: 1500,
@@ -72,7 +72,7 @@ export const SHIELD_DATA = [
   {
     id: 'rustproof_shield',
     name: '錆止めの盾',
-    spriteKey: 'item.shield',
+    spriteKey: 'item.shield.rustproof_shield',
     baseDef: 3,
     buyPrice: 5000,
     sellPrice: 1500,
@@ -83,7 +83,7 @@ export const SHIELD_DATA = [
   {
     id: 'blast_shield',
     name: '爆発防御の盾',
-    spriteKey: 'item.shield',
+    spriteKey: 'item.shield.blast_shield',
     baseDef: 4,
     buyPrice: 6000,
     sellPrice: 1800,
@@ -94,7 +94,7 @@ export const SHIELD_DATA = [
   {
     id: 'fullness_shield',
     name: '満腹の盾',
-    spriteKey: 'item.shield',
+    spriteKey: 'item.shield.fullness_shield',
     baseDef: 4,
     buyPrice: 5000,
     sellPrice: 1500,
@@ -105,7 +105,7 @@ export const SHIELD_DATA = [
   {
     id: 'legendary_shield',
     name: '伝説の盾',
-    spriteKey: 'item.shield',
+    spriteKey: 'item.shield.legendary_shield',
     baseDef: 15,
     buyPrice: 15000,
     sellPrice: 5000,

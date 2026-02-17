@@ -6,7 +6,7 @@ export const WEAPON_DATA = [
   {
     id: 'wooden_stick',
     name: '木の棒',
-    spriteKey: 'item.weapon',
+    spriteKey: 'item.weapon.wooden_stick',
     baseAtk: 2,
     buyPrice: 300,
     sellPrice: 90,
@@ -17,7 +17,7 @@ export const WEAPON_DATA = [
   {
     id: 'copper_sword',
     name: '銅の剣',
-    spriteKey: 'item.weapon',
+    spriteKey: 'item.weapon.copper_sword',
     baseAtk: 4,
     buyPrice: 600,
     sellPrice: 180,
@@ -28,7 +28,7 @@ export const WEAPON_DATA = [
   {
     id: 'iron_katana',
     name: '鉄の刀',
-    spriteKey: 'item.weapon',
+    spriteKey: 'item.weapon.iron_katana',
     baseAtk: 6,
     buyPrice: 1000,
     sellPrice: 300,
@@ -39,7 +39,7 @@ export const WEAPON_DATA = [
   {
     id: 'steel_tachi',
     name: '鋼の太刀',
-    spriteKey: 'item.weapon',
+    spriteKey: 'item.weapon.steel_tachi',
     baseAtk: 8,
     buyPrice: 2000,
     sellPrice: 600,
@@ -50,7 +50,7 @@ export const WEAPON_DATA = [
   {
     id: 'spirit_sword',
     name: '霊刀',
-    spriteKey: 'item.weapon',
+    spriteKey: 'item.weapon.spirit_sword',
     baseAtk: 5,
     buyPrice: 5000,
     sellPrice: 1500,
@@ -61,7 +61,7 @@ export const WEAPON_DATA = [
   {
     id: 'dragon_sword',
     name: '竜斬りの剣',
-    spriteKey: 'item.weapon',
+    spriteKey: 'item.weapon.dragon_sword',
     baseAtk: 5,
     buyPrice: 5000,
     sellPrice: 1500,
@@ -72,7 +72,7 @@ export const WEAPON_DATA = [
   {
     id: 'cyclops_sword',
     name: '一つ目斬り',
-    spriteKey: 'item.weapon',
+    spriteKey: 'item.weapon.cyclops_sword',
     baseAtk: 5,
     buyPrice: 5000,
     sellPrice: 1500,
@@ -83,7 +83,7 @@ export const WEAPON_DATA = [
   {
     id: 'drain_sword',
     name: 'ドレイン斬り',
-    spriteKey: 'item.weapon',
+    spriteKey: 'item.weapon.drain_sword',
     baseAtk: 5,
     buyPrice: 5000,
     sellPrice: 1500,
@@ -94,7 +94,7 @@ export const WEAPON_DATA = [
   {
     id: 'pickaxe',
     name: 'つるはし',
-    spriteKey: 'item.weapon',
+    spriteKey: 'item.weapon.pickaxe',
     baseAtk: 3,
     buyPrice: 700,
     sellPrice: 350,
@@ -105,7 +105,7 @@ export const WEAPON_DATA = [
   {
     id: 'kamaitachi',
     name: '妖刀かまいたち',
-    spriteKey: 'item.weapon',
+    spriteKey: 'item.weapon.kamaitachi',
     baseAtk: 7,
     buyPrice: 8000,
     sellPrice: 2400,
@@ -116,7 +116,7 @@ export const WEAPON_DATA = [
   {
     id: 'legendary_sword',
     name: '伝説の剣',
-    spriteKey: 'item.weapon',
+    spriteKey: 'item.weapon.legendary_sword',
     baseAtk: 15,
     buyPrice: 15000,
     sellPrice: 5000,

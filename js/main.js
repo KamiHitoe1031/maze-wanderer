@@ -7,6 +7,7 @@ import { Renderer } from './renderer.js';
 import { InputHandler, ACTION } from './input.js';
 import { UI } from './ui.js';
 import { ITEM_CATEGORY } from './item.js';
+import { SoundManager, SOUND } from './sound-manager.js';
 
 class Game {
   constructor() {
@@ -14,10 +15,12 @@ class Game {
     this.renderer = new Renderer(this.canvas);
     this.input = new InputHandler();
     this.ui = new UI();
+    this.sound = new SoundManager();
     this.gameState = null;
 
     this.isRunning = false;
     this.inventoryBusy = false;
+    this.soundInitialized = false;
   }
 
   /**
@@ -34,6 +37,11 @@ class Game {
     // 状態変更コールバック
     this.gameState.onStateChange = (state) => {
       this.handleStateChange(state);
+    };
+
+    // サウンドコールバック
+    this.gameState.onSound = (soundKey) => {
+      this.sound.play(soundKey);
     };
 
     // 初期視界を更新
@@ -59,9 +67,21 @@ class Game {
     if (this.gameState.state !== GAME_STATE.PLAYING) return;
     if (this.inventoryBusy) return;
 
+    // 最初のユーザー操作でサウンドシステムを初期化
+    if (!this.soundInitialized) {
+      this.sound.init();
+      this.soundInitialized = true;
+    }
+
     // 入力チェック
     if (this.input.hasAction()) {
       const { action, direction } = this.input.getAction();
+
+      if (action === ACTION.TOGGLE_MUTE) {
+        const muted = this.sound.toggleMute();
+        this.ui.addMessage(muted ? '音をミュートしました。' : 'ミュートを解除しました。', 'info');
+        return;
+      }
 
       if (action === ACTION.INVENTORY) {
         this.openInventory();
