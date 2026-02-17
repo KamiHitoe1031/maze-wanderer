@@ -58,7 +58,7 @@ export class UI {
 
     // ちから
     if (this.strengthDisplay) {
-      this.strengthDisplay.textContent = `ちから: ${player.strength}`;
+      this.strengthDisplay.textContent = `ちから: ${player.strength}/${player.maxStrength}`;
       if (player.strength < player.maxStrength) {
         this.strengthDisplay.style.color = '#ff8888';
       } else {

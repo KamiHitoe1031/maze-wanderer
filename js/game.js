@@ -741,11 +741,44 @@ export class GameState {
         this.addMessage(`${getItemDisplayName(targetItem)}を識別した！`, 'info');
         break;
 
-      case 'synthesis':
+      case 'synthesis': {
         pot.contents.push(targetItem);
         this.addMessage(`${getItemDisplayName(targetItem)}を${getItemDisplayName(pot)}に入れた。`, 'info');
-        // 合成処理は同種装備が2つ入った時に実行（Phase 4）
+
+        // 同種装備が2つ以上入ったら合成を実行
+        const weapons = pot.contents.filter(it => it.category === ITEM_CATEGORY.WEAPON);
+        const shields = pot.contents.filter(it => it.category === ITEM_CATEGORY.SHIELD);
+
+        const synthesize = (items) => {
+          if (items.length < 2) return;
+          const base = items[0];
+          for (let i = 1; i < items.length; i++) {
+            const material = items[i];
+            // 強化値を合算
+            base.enhance = (base.enhance || 0) + (material.enhance || 0);
+            // 印（特殊効果）を移植
+            if (material.seals && material.seals.length > 0) {
+              base.seals = base.seals || [];
+              const maxSeals = base.maxSeals || 4;
+              for (const seal of material.seals) {
+                if (base.seals.length < maxSeals && !base.seals.includes(seal)) {
+                  base.seals.push(seal);
+                }
+              }
+            }
+            // 特殊プロパティの移植（錆止め等）
+            if (material.rustproof) base.rustproof = true;
+          }
+          this.addMessage(`${getItemDisplayName(base)}に合成された！（強化値+${base.enhance}）`, 'important');
+          this.emitEffect('levelup', this.player.x, this.player.y);
+          // 壺の中身をベースだけに
+          pot.contents = [base];
+        };
+
+        if (weapons.length >= 2) synthesize(weapons);
+        if (shields.length >= 2) synthesize(shields);
         break;
+      }
 
       case 'warehouse':
         // 直接倉庫に送る（SaveManager経由）

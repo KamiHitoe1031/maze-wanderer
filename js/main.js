@@ -135,7 +135,28 @@ class Game {
    */
   updateDungeon() {
     if (!this.isRunning) return;
-    if (!this.gameState || this.gameState.state !== GAME_STATE.PLAYING) return;
+    if (!this.gameState) return;
+
+    // デバッグ復活（F9）: ゲームオーバー中でも受け付ける
+    if (this.input.hasAction()) {
+      const peeked = this.input.pendingAction;
+      if (peeked === ACTION.DEBUG_REVIVE && this.gameState.state === GAME_STATE.GAME_OVER) {
+        this.input.getAction(); // consume
+        this.gameState.player.hp = this.gameState.player.maxHp;
+        this.gameState.player.isAlive = true;
+        this.gameState.player.fullness = Math.max(this.gameState.player.fullness, 50);
+        this.gameState.state = GAME_STATE.PLAYING;
+        this.ui.addMessage('[DEBUG] その場で復活した！', 'important');
+        this.ui.updateStatus(this.gameState);
+        // ゲームオーバーオーバーレイを除去
+        const overlay = document.querySelector('.game-overlay');
+        if (overlay) overlay.remove();
+        this.renderDungeon();
+        return;
+      }
+    }
+
+    if (this.gameState.state !== GAME_STATE.PLAYING) return;
     if (this.inventoryBusy) return;
 
     // 最初のユーザー操作でサウンドシステムを初期化
