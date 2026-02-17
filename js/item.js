@@ -7,6 +7,9 @@ import { SHIELD_DATA } from './data/shields.js';
 import { GRASS_DATA } from './data/grasses.js';
 import { SCROLL_DATA } from './data/scrolls.js';
 import { FOOD_DATA } from './data/food.js';
+import { RING_DATA } from './data/rings.js';
+import { POT_DATA } from './data/pots.js';
+import { ARROW_DATA } from './data/arrows.js';
 
 // アイテムカテゴリ
 export const ITEM_CATEGORY = {
@@ -15,11 +18,28 @@ export const ITEM_CATEGORY = {
   GRASS: 'grass',
   SCROLL: 'scroll',
   FOOD: 'food',
+  RING: 'ring',
+  POT: 'pot',
+  ARROW: 'arrow',
   GOLD: 'gold'
 };
 
 // ユニークID生成用カウンタ
 let itemIdCounter = 0;
+
+/**
+ * アイテムIDカウンタを取得（セーブ用）
+ */
+export function getItemIdCounter() {
+  return itemIdCounter;
+}
+
+/**
+ * アイテムIDカウンタを設定（ロード用、衝突回避）
+ */
+export function setItemIdCounter(n) {
+  itemIdCounter = n;
+}
 
 /**
  * アイテムインスタンスを生成
@@ -86,6 +106,23 @@ export function createItem(dataId, category, options = {}) {
       item.damage = data.damage;
       break;
 
+    case ITEM_CATEGORY.RING:
+      item.effect = data.effect;
+      item.bonusAmount = data.bonusAmount || 0;
+      break;
+
+    case ITEM_CATEGORY.POT:
+      item.effect = data.effect;
+      item.capacity = data.capacity;
+      item.contents = options.contents ?? [];
+      break;
+
+    case ITEM_CATEGORY.ARROW:
+      item.baseDamage = data.baseDamage;
+      item.arrowEffect = data.arrowEffect;
+      item.count = options.count ?? 1;
+      break;
+
     case ITEM_CATEGORY.GOLD:
       item.amount = options.amount ?? 100;
       item.name = `${item.amount}銭`;
@@ -106,6 +143,9 @@ function getItemDataByCategory(id, category) {
     case ITEM_CATEGORY.GRASS: return GRASS_DATA.find(d => d.id === id);
     case ITEM_CATEGORY.SCROLL: return SCROLL_DATA.find(d => d.id === id);
     case ITEM_CATEGORY.FOOD: return FOOD_DATA.find(d => d.id === id);
+    case ITEM_CATEGORY.RING: return RING_DATA.find(d => d.id === id);
+    case ITEM_CATEGORY.POT: return POT_DATA.find(d => d.id === id);
+    case ITEM_CATEGORY.ARROW: return ARROW_DATA.find(d => d.id === id);
     default: return null;
   }
 }
@@ -124,6 +164,16 @@ export function getItemDisplayName(item) {
   if (item.enhance !== undefined && item.enhance !== 0) {
     const sign = item.enhance >= 0 ? '+' : '';
     name += `${sign}${item.enhance}`;
+  }
+
+  // 矢の本数
+  if (item.category === ITEM_CATEGORY.ARROW && item.count !== undefined) {
+    name += `×${item.count}`;
+  }
+
+  // 壺の容量
+  if (item.category === ITEM_CATEGORY.POT && item.capacity !== undefined) {
+    name += `[${item.contents ? item.contents.length : 0}/${item.capacity}]`;
   }
 
   // 呪い
@@ -157,7 +207,9 @@ const FLOOR_ITEM_TABLE = {
       { id: 'identify_scroll', category: ITEM_CATEGORY.SCROLL, weight: 4 },
       { id: 'warp_scroll', category: ITEM_CATEGORY.SCROLL, weight: 3 },
       { id: 'enhance_scroll', category: ITEM_CATEGORY.SCROLL, weight: 2 },
-      { id: 'vacuum_scroll', category: ITEM_CATEGORY.SCROLL, weight: 2 }
+      { id: 'vacuum_scroll', category: ITEM_CATEGORY.SCROLL, weight: 2 },
+      { id: 'wood_arrow', category: ITEM_CATEGORY.ARROW, weight: 5 },
+      { id: 'iron_arrow', category: ITEM_CATEGORY.ARROW, weight: 2 }
     ]
   },
   // 6-12F: バランス良く出現
@@ -190,7 +242,17 @@ const FLOOR_ITEM_TABLE = {
       { id: 'vacuum_scroll', category: ITEM_CATEGORY.SCROLL, weight: 3 },
       { id: 'confusion_scroll', category: ITEM_CATEGORY.SCROLL, weight: 2 },
       { id: 'sleep_scroll', category: ITEM_CATEGORY.SCROLL, weight: 2 },
-      { id: 'purify_scroll', category: ITEM_CATEGORY.SCROLL, weight: 2 }
+      { id: 'purify_scroll', category: ITEM_CATEGORY.SCROLL, weight: 2 },
+      { id: 'wood_arrow', category: ITEM_CATEGORY.ARROW, weight: 4 },
+      { id: 'iron_arrow', category: ITEM_CATEGORY.ARROW, weight: 3 },
+      { id: 'poison_arrow', category: ITEM_CATEGORY.ARROW, weight: 2 },
+      { id: 'strength_ring', category: ITEM_CATEGORY.RING, weight: 1 },
+      { id: 'recovery_ring', category: ITEM_CATEGORY.RING, weight: 1 },
+      { id: 'sleep_resist_ring', category: ITEM_CATEGORY.RING, weight: 1 },
+      { id: 'confusion_resist_ring', category: ITEM_CATEGORY.RING, weight: 1 },
+      { id: 'storage_pot', category: ITEM_CATEGORY.POT, weight: 2 },
+      { id: 'identify_pot', category: ITEM_CATEGORY.POT, weight: 1 },
+      { id: 'heal_pot', category: ITEM_CATEGORY.POT, weight: 1 }
     ]
   },
   // 13-20F: 高級品がまれに出現
@@ -222,7 +284,18 @@ const FLOOR_ITEM_TABLE = {
       { id: 'vacuum_scroll', category: ITEM_CATEGORY.SCROLL, weight: 3 },
       { id: 'annihilation_scroll', category: ITEM_CATEGORY.SCROLL, weight: 1 },
       { id: 'plating_scroll', category: ITEM_CATEGORY.SCROLL, weight: 2 },
-      { id: 'purify_scroll', category: ITEM_CATEGORY.SCROLL, weight: 2 }
+      { id: 'purify_scroll', category: ITEM_CATEGORY.SCROLL, weight: 2 },
+      { id: 'iron_arrow', category: ITEM_CATEGORY.ARROW, weight: 3 },
+      { id: 'silver_arrow', category: ITEM_CATEGORY.ARROW, weight: 1 },
+      { id: 'knockback_arrow', category: ITEM_CATEGORY.ARROW, weight: 2 },
+      { id: 'clairvoyance_ring', category: ITEM_CATEGORY.RING, weight: 1 },
+      { id: 'trap_sight_ring', category: ITEM_CATEGORY.RING, weight: 1 },
+      { id: 'wall_pass_ring', category: ITEM_CATEGORY.RING, weight: 0.5 },
+      { id: 'curse_resist_ring', category: ITEM_CATEGORY.RING, weight: 1 },
+      { id: 'storage_pot', category: ITEM_CATEGORY.POT, weight: 2 },
+      { id: 'synthesis_pot', category: ITEM_CATEGORY.POT, weight: 1 },
+      { id: 'heal_pot', category: ITEM_CATEGORY.POT, weight: 1 },
+      { id: 'warehouse_pot', category: ITEM_CATEGORY.POT, weight: 1 }
     ]
   }
 };
@@ -269,6 +342,11 @@ export function generateRandomItem(floor, rng, options = {}) {
     if (rng.chance(0.1)) {
       itemOptions.enhance = -rng.nextInt(1, 2);
     }
+  }
+
+  // 矢は本数をランダム付与
+  if (entry.category === ITEM_CATEGORY.ARROW) {
+    itemOptions.count = rng.nextInt(3, 8 + Math.floor(floor / 3));
   }
 
   const item = createItem(entry.id, entry.category, itemOptions);
@@ -440,6 +518,30 @@ export function applyGrassEffect(item, player, gameState) {
         }
       }
       messages.push('フロアの記憶が消えた...');
+      break;
+
+    case 'forest_heal':
+      player.heal(item.healAmount);
+      if (item.maxHpUp) {
+        player.maxHp += item.maxHpUp;
+        player.hp = Math.min(player.hp, player.maxHp);
+      }
+      messages.push(`HPが${item.healAmount}回復し、最大HP+${item.maxHpUp || 0}！`);
+      break;
+
+    case 'sea_heal':
+      player.heal(item.healAmount);
+      if (item.maxHpUp) {
+        player.maxHp += item.maxHpUp;
+        player.hp = Math.min(player.hp, player.maxHp);
+      }
+      messages.push(`HPが${item.healAmount}回復し、最大HP+${item.maxHpUp || 0}！`);
+      break;
+
+    case 'invisible':
+      player.statusEffects = player.statusEffects || [];
+      player.statusEffects.push({ type: 'invisible', remaining: item.duration });
+      messages.push(`${item.duration}ターンの間、透明になった！`);
       break;
   }
 

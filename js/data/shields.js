@@ -112,6 +112,52 @@ export const SHIELD_DATA = [
     slots: 8,
     effect: null,
     description: '最強の盾。'
+  },
+
+  // === 特殊盾（D2/D3用） ===
+  {
+    id: 'bark_shield',
+    name: '樹皮の盾',
+    spriteKey: 'item.shield.bark_shield',
+    baseDef: 5,
+    buyPrice: 3000,
+    sellPrice: 900,
+    slots: 4,
+    effect: 'forest_resist',
+    description: '深緑の迷宮で植物攻撃半減。'
+  },
+  {
+    id: 'coral_shield',
+    name: '珊瑚の盾',
+    spriteKey: 'item.shield.coral_shield',
+    baseDef: 5,
+    buyPrice: 3000,
+    sellPrice: 900,
+    slots: 4,
+    effect: 'water_resist',
+    description: '海淵の洞窟で水棲攻撃半減。'
+  },
+  {
+    id: 'mirror_shield',
+    name: '鏡の盾',
+    spriteKey: 'item.shield.mirror_shield',
+    baseDef: 4,
+    buyPrice: 8000,
+    sellPrice: 2400,
+    slots: 4,
+    effect: 'magic_reflect',
+    description: '魔法攻撃を反射する。'
+  },
+  {
+    id: 'thorn_shield',
+    name: '棘の盾',
+    spriteKey: 'item.shield.thorn_shield',
+    baseDef: 5,
+    buyPrice: 6000,
+    sellPrice: 1800,
+    slots: 4,
+    effect: 'counter',
+    description: '受けたダメージの1/4を敵に跳ね返す。'
   }
 ];
 

@@ -53,6 +53,11 @@ export class Renderer {
     // マップ描画
     this.renderMap(gameState.dungeon);
 
+    // 罠描画
+    if (gameState.trapManager) {
+      this.renderTraps(gameState.trapManager.getVisibleTraps(gameState.player), gameState.dungeon);
+    }
+
     // アイテム描画
     this.renderItems(gameState.floorItems, gameState.dungeon);
 
@@ -113,6 +118,27 @@ export class Renderer {
       }
 
       this.spriteManager.draw(this.ctx, item.spriteKey, screenX, screenY);
+    }
+  }
+
+  /**
+   * 可視罠を描画
+   */
+  renderTraps(visibleTraps, dungeon) {
+    if (!visibleTraps) return;
+
+    for (const trap of visibleTraps) {
+      if (!dungeon.explored[trap.y]?.[trap.x]) continue;
+
+      const screenX = (trap.x - this.cameraX) * this.tileSize;
+      const screenY = (trap.y - this.cameraY) * this.tileSize;
+
+      if (screenX < 0 || screenX >= this.canvas.width ||
+          screenY < 0 || screenY >= this.canvas.height) {
+        continue;
+      }
+
+      this.spriteManager.draw(this.ctx, trap.spriteKey || 'trap.default', screenX, screenY);
     }
   }
 

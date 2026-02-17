@@ -166,6 +166,40 @@ export const GRASS_DATA = [
     sellPrice: 105,
     effect: 'amnesia',
     description: 'フロアの地図情報が消える。'
+  },
+
+  // === ダンジョン固有の草 ===
+  {
+    id: 'forest_herb',
+    name: '森の薬草',
+    spriteKey: 'item.grass',
+    buyPrice: 400,
+    sellPrice: 140,
+    effect: 'forest_heal',
+    healAmount: 75,
+    maxHpUp: 2,
+    description: 'HP75回復、最大HP+2。深緑の迷宮限定。'
+  },
+  {
+    id: 'sea_kelp',
+    name: '海の昆布',
+    spriteKey: 'item.grass',
+    buyPrice: 400,
+    sellPrice: 140,
+    effect: 'sea_heal',
+    healAmount: 75,
+    maxHpUp: 2,
+    description: 'HP75回復、最大HP+2。海淵の洞窟限定。'
+  },
+  {
+    id: 'invisibility_grass',
+    name: '透明草',
+    spriteKey: 'item.grass',
+    buyPrice: 800,
+    sellPrice: 280,
+    effect: 'invisible',
+    duration: 20,
+    description: '20ターン透明状態になる。'
   }
 ];
 

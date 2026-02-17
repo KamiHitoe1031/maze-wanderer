@@ -143,9 +143,10 @@ class BSPNode {
  * ダンジョンクラス
  */
 export class Dungeon {
-  constructor(floor, rng) {
+  constructor(floor, rng, theme = 'stone') {
     this.floor = floor;
     this.rng = rng;
+    this.theme = theme;
     this.map = this.createEmptyMap();
     this.rooms = [];
     this.stairsPos = null;
@@ -215,6 +216,11 @@ export class Dungeon {
     if (!this.verifyConnectivity()) {
       // 接続できていない場合は追加で通路を掘る
       this.forceConnectivity();
+    }
+
+    // 海テーマ：一部の通路を水路に変換
+    if (this.theme === 'ocean') {
+      this.generateWaterCorridors();
     }
 
     // プレイヤー開始位置を設定
@@ -371,6 +377,19 @@ export class Dungeon {
   }
 
   /**
+   * 通路の一部を水路に変換（海テーマ用）
+   */
+  generateWaterCorridors() {
+    for (let y = 0; y < MAP_HEIGHT; y++) {
+      for (let x = 0; x < MAP_WIDTH; x++) {
+        if (this.map[y][x] === TILE.CORRIDOR && this.rng.chance(0.3)) {
+          this.map[y][x] = TILE.WATER;
+        }
+      }
+    }
+  }
+
+  /**
    * 部屋内のランダムな点を取得
    */
   getRandomPointInRoom(room) {
@@ -388,7 +407,7 @@ export class Dungeon {
       return false;
     }
     const tile = this.map[y][x];
-    return tile === TILE.FLOOR || tile === TILE.CORRIDOR || tile === TILE.STAIRS;
+    return tile === TILE.FLOOR || tile === TILE.CORRIDOR || tile === TILE.STAIRS || tile === TILE.WATER;
   }
 
   /**
@@ -426,17 +445,20 @@ export class Dungeon {
    */
   getTileSpriteKey(x, y) {
     if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) {
-      return 'tile.wall';
+      return this.theme !== 'stone' ? `tile.${this.theme}.wall` : 'tile.wall';
     }
 
-    switch (this.map[y][x]) {
-      case TILE.WALL: return 'tile.wall';
-      case TILE.FLOOR: return 'tile.floor';
-      case TILE.CORRIDOR: return 'tile.corridor';
-      case TILE.STAIRS: return 'tile.stairs';
-      case TILE.WATER: return 'tile.water';
-      case TILE.SHOP: return 'tile.shop';
-      default: return 'tile.floor';
+    const tile = this.map[y][x];
+    const prefix = this.theme !== 'stone' ? `tile.${this.theme}.` : 'tile.';
+
+    switch (tile) {
+      case TILE.WALL: return `${prefix}wall`;
+      case TILE.FLOOR: return `${prefix}floor`;
+      case TILE.CORRIDOR: return `${prefix}corridor`;
+      case TILE.STAIRS: return 'tile.stairs'; // 階段は共通
+      case TILE.WATER: return `${prefix}water`;
+      case TILE.SHOP: return 'tile.shop'; // 店は共通
+      default: return `${prefix}floor`;
     }
   }
 

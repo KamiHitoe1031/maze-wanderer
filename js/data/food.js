@@ -67,6 +67,47 @@ export const FOOD_DATA = [
     strengthChange: -1,
     damage: 5,
     description: '満腹度30回復、ちから-1、5ダメージ。'
+  },
+
+  // === ダンジョン固有の食料 ===
+  {
+    id: 'forest_berry',
+    name: '森のベリー',
+    spriteKey: 'item.food',
+    buyPrice: 150,
+    sellPrice: 52,
+    fullnessRestore: 40,
+    hpRestore: 30,
+    maxFullnessUp: 0,
+    strengthChange: 0,
+    damage: 0,
+    description: '満腹度40、HP30回復。深緑の迷宮限定。'
+  },
+  {
+    id: 'dried_fish',
+    name: '干し魚',
+    spriteKey: 'item.food',
+    buyPrice: 150,
+    sellPrice: 52,
+    fullnessRestore: 40,
+    hpRestore: 30,
+    maxFullnessUp: 0,
+    strengthChange: 0,
+    damage: 0,
+    description: '満腹度40、HP30回復。海淵の洞窟限定。'
+  },
+  {
+    id: 'golden_apple',
+    name: '黄金のリンゴ',
+    spriteKey: 'item.food',
+    buyPrice: 5000,
+    sellPrice: 1750,
+    fullnessRestore: 100,
+    hpRestore: 100,
+    maxFullnessUp: 10,
+    strengthChange: 0,
+    damage: 0,
+    description: '満腹度100、HP100回復、最大満腹度+10。稀少。'
   }
 ];
 

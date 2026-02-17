@@ -19,6 +19,8 @@ import {
   applyScrollEffect,
   applyEnhanceScroll
 } from './item.js';
+import { getDungeonDef } from './data/dungeons.js';
+import { TrapManager } from './trap.js';
 
 // ゲーム状態
 export const GAME_STATE = {
@@ -29,12 +31,18 @@ export const GAME_STATE = {
 };
 
 export class GameState {
-  constructor() {
+  /**
+   * @param {object} dungeonDef - ダンジョン定義（data/dungeons.js）
+   * @param {object} options - { carryItems, carryGold }
+   */
+  constructor(dungeonDef = null, options = {}) {
+    this.dungeonDef = dungeonDef || getDungeonDef('dungeon_1');
+
     this.seed = generateSeed();
     this.rng = new RNG(this.seed);
 
     this.floor = 1;
-    this.maxFloor = 20;
+    this.maxFloor = this.dungeonDef.maxFloor;
     this.turnCount = 0;
 
     this.state = GAME_STATE.PLAYING;
@@ -42,15 +50,28 @@ export class GameState {
     this.maxMessages = 5;
 
     // ダンジョン生成
-    this.dungeon = new Dungeon(this.floor, this.rng).generate();
+    this.dungeon = new Dungeon(this.floor, this.rng, this.dungeonDef.theme).generate();
 
     // プレイヤー生成
     const startPos = this.dungeon.playerStartPos;
     this.player = new Player(startPos.x, startPos.y);
 
+    // 町から持ち込んだアイテム・お金を反映
+    if (options.carryItems && options.carryItems.length > 0) {
+      for (const item of options.carryItems) {
+        item.onFloor = false;
+        item.x = -1;
+        item.y = -1;
+        this.player.inventory.push(item);
+      }
+    }
+    if (options.carryGold) {
+      this.player.gold += options.carryGold;
+    }
+
     // モンスター管理
     this.monsterManager = new MonsterManager();
-    this.monsterManager.initFloor(this.floor, this.dungeon, this.rng, this.player);
+    this.monsterManager.initFloor(this.floor, this.dungeon, this.rng, this.player, this.dungeonDef.id);
 
     // フロアアイテム
     this.floorItems = [];
@@ -58,6 +79,10 @@ export class GameState {
 
     // 戦闘システム
     this.combat = new Combat(this.rng);
+
+    // 罠管理
+    this.trapManager = new TrapManager();
+    this.trapManager.placeTraps(this.dungeon, this.rng, this.floor, this.dungeonDef.id);
 
     // コールバック
     this.onMessage = null;
@@ -205,6 +230,21 @@ export class GameState {
     this.player.move(direction.dx, direction.dy);
     this.emitSound('footstep');
 
+    // 罠チェック
+    const trapResult = this.trapManager.checkTrap(this.player.x, this.player.y, this.player, this);
+    if (trapResult && trapResult.activated) {
+      this.addMessage(trapResult.message, trapResult.type);
+      this.emitSound('trap');
+
+      // 落とし穴で次のフロアへ
+      if (trapResult.floorSkip) {
+        this.nextFloor();
+        return true;
+      }
+
+      this.checkPlayerDeath();
+    }
+
     // 移動先にアイテムがあるか通知
     const itemOnFloor = this.floorItems.find(
       it => it.x === this.player.x && it.y === this.player.y
@@ -220,30 +260,42 @@ export class GameState {
    * 攻撃処理（向いている方向）
    */
   handleAttack() {
-    // 攻撃対象を取得
-    const target = this.combat.getAttackTarget(this.player, this.player.direction, this.monsters);
-    const result = this.combat.attackInDirection(this.player, this.monsters);
-    this.addMessage(result.message, result.hit ? 'damage' : 'info');
+    // 武器タイプに応じた攻撃を解決
+    const results = this.combat.resolveWeaponAttack(this.player, this.monsters, this.dungeon);
 
-    // 分裂チェック
-    if (target && result.hit && target.isAlive) {
-      const splitResult = this.monsterManager.handleSplit(target, this.dungeon, this.player);
-      if (splitResult) {
-        this.addMessage(splitResult.message, 'info');
+    let anyKilled = false;
+    let totalExp = 0;
+
+    for (const result of results) {
+      this.addMessage(result.message, result.hit ? 'damage' : 'info');
+
+      const target = result.target;
+
+      // 分裂チェック
+      if (target && result.hit && target.isAlive) {
+        const splitResult = this.monsterManager.handleSplit(target, this.dungeon, this.player);
+        if (splitResult) {
+          this.addMessage(splitResult.message, 'info');
+        }
+      }
+
+      if (result.killed && target) {
+        this.emitSound('monster_death');
+
+        // 乗り移りチェック
+        const possessResult = this.monsterManager.handlePossessOnDeath(target, this.player);
+        if (possessResult) {
+          this.addMessage(possessResult.message, 'important');
+        }
+
+        anyKilled = true;
+        totalExp += result.exp;
       }
     }
 
-    if (result.killed && target) {
-      this.emitSound('monster_death');
-
-      // 乗り移りチェック
-      const possessResult = this.monsterManager.handlePossessOnDeath(target, this.player);
-      if (possessResult) {
-        this.addMessage(possessResult.message, 'important');
-      }
-
+    if (anyKilled) {
       const prevLevel = this.player.level;
-      this.player.gainExp(result.exp);
+      this.player.gainExp(totalExp);
       if (this.player.level > prevLevel) {
         this.emitSound('levelup');
         this.addMessage(`レベルが${this.player.level}に上がった！`, 'important');
@@ -320,7 +372,7 @@ export class GameState {
     if (this.floor > this.maxFloor) {
       // クリア
       this.state = GAME_STATE.VICTORY;
-      this.addMessage('霧幻の塔を踏破した！おめでとう！', 'important');
+      this.addMessage(this.dungeonDef.victoryMessage, 'important');
       this.emitSound('levelup');
       if (this.onStateChange) {
         this.onStateChange(this.state);
@@ -331,22 +383,32 @@ export class GameState {
     this.addMessage(`${this.floor}階に降りた。`, 'important');
 
     // 新しいフロアを生成
-    this.dungeon = new Dungeon(this.floor, this.rng).generate();
+    this.dungeon = new Dungeon(this.floor, this.rng, this.dungeonDef.theme).generate();
 
     // プレイヤー位置をリセット
     const startPos = this.dungeon.playerStartPos;
     this.player.setPosition(startPos.x, startPos.y);
 
     // モンスターを再配置
-    this.monsterManager.initFloor(this.floor, this.dungeon, this.rng, this.player);
+    this.monsterManager.initFloor(this.floor, this.dungeon, this.rng, this.player, this.dungeonDef.id);
 
     // アイテムを再配置
     this.floorItems = [];
     placeItemsOnFloor(this.floor, this.dungeon, this.rng, this.floorItems);
 
+    // 罠を再配置
+    this.trapManager.placeTraps(this.dungeon, this.rng, this.floor, this.dungeonDef.id);
+
     if (this.onFloorChange) {
       this.onFloorChange(this.floor);
     }
+  }
+
+  /**
+   * 次のフロアへ進む（落とし穴用）
+   */
+  nextFloor() {
+    this.descendStairs();
   }
 
   /**
@@ -392,6 +454,15 @@ export class GameState {
 
       case 'drop':
         return this.dropItem(item);
+
+      case 'pot_insert':
+        return this.potInsert(item, targetItem);
+
+      case 'pot_extract':
+        return this.potExtract(item);
+
+      case 'shoot':
+        return this.shootArrow(item);
     }
 
     return false;
@@ -424,6 +495,29 @@ export class GameState {
       return true;
     }
 
+    if (item.category === ITEM_CATEGORY.RING) {
+      // 空きスロットに装備、なければring1を上書き
+      if (!this.player.ring1) {
+        this.player.ring1 = item;
+      } else if (!this.player.ring2) {
+        this.player.ring2 = item;
+      } else {
+        // 両方埋まっている場合、ring1の呪い確認
+        if (this.player.ring1.cursed) {
+          if (this.player.ring2.cursed) {
+            this.addMessage('腕輪が外せない！', 'damage');
+            return false;
+          }
+          this.player.ring2 = item;
+        } else {
+          this.player.ring1 = item;
+        }
+      }
+      this.addMessage(`${getItemDisplayName(item)}を装備した。`, 'info');
+      this.emitSound('equip');
+      return true;
+    }
+
     return false;
   }
 
@@ -445,6 +539,20 @@ export class GameState {
 
     if (this.player.shield === item) {
       this.player.shield = null;
+      this.addMessage(`${getItemDisplayName(item)}を外した。`, 'info');
+      this.emitSound('unequip');
+      return true;
+    }
+
+    if (this.player.ring1 === item) {
+      this.player.ring1 = null;
+      this.addMessage(`${getItemDisplayName(item)}を外した。`, 'info');
+      this.emitSound('unequip');
+      return true;
+    }
+
+    if (this.player.ring2 === item) {
+      this.player.ring2 = null;
       this.addMessage(`${getItemDisplayName(item)}を外した。`, 'info');
       this.emitSound('unequip');
       return true;
@@ -501,6 +609,18 @@ export class GameState {
         this.emitSound('scroll_use');
         break;
 
+      case ITEM_CATEGORY.POT:
+        if (item.effect === 'heal') {
+          const healAmount = 50 + item.contents.length * 30;
+          this.player.heal(healAmount);
+          messages = [`回復の壺を割った！HPが${healAmount}回復した！`];
+          removeFromInventory();
+        } else {
+          this.addMessage('それは使えない。', 'info');
+          return false;
+        }
+        break;
+
       default:
         this.addMessage('それは使えない。', 'info');
         return false;
@@ -521,7 +641,9 @@ export class GameState {
    */
   dropItem(item) {
     // 呪われた装備は外せない
-    if ((this.player.weapon === item || this.player.shield === item) && item.cursed) {
+    const isEquipped = item === this.player.weapon || item === this.player.shield ||
+      item === this.player.ring1 || item === this.player.ring2;
+    if (isEquipped && item.cursed) {
       this.addMessage('呪われていて置けない！', 'damage');
       return false;
     }
@@ -529,6 +651,8 @@ export class GameState {
     // 装備中なら外す
     if (this.player.weapon === item) this.player.weapon = null;
     if (this.player.shield === item) this.player.shield = null;
+    if (this.player.ring1 === item) this.player.ring1 = null;
+    if (this.player.ring2 === item) this.player.ring2 = null;
 
     // インベントリから除去
     const idx = this.player.inventory.indexOf(item);
@@ -541,6 +665,147 @@ export class GameState {
     this.floorItems.push(item);
 
     this.addMessage(`${getItemDisplayName(item)}を足元に置いた。`, 'info');
+    return true;
+  }
+
+  /**
+   * 壺にアイテムを入れる
+   */
+  potInsert(pot, targetItem) {
+    if (!pot || !targetItem) return false;
+    if (pot.contents.length >= pot.capacity) {
+      this.addMessage('壺がいっぱいだ。', 'info');
+      return false;
+    }
+
+    // インベントリからターゲットを除去
+    const idx = this.player.inventory.indexOf(targetItem);
+    if (idx >= 0) this.player.inventory.splice(idx, 1);
+
+    // 壺の効果を適用
+    switch (pot.effect) {
+      case 'storage':
+        pot.contents.push(targetItem);
+        this.addMessage(`${getItemDisplayName(targetItem)}を${getItemDisplayName(pot)}に入れた。`, 'info');
+        break;
+
+      case 'identify':
+        // 未識別システム用（Phase 3）- 現時点では保存のみ
+        pot.contents.push(targetItem);
+        this.addMessage(`${getItemDisplayName(targetItem)}を識別した！`, 'info');
+        break;
+
+      case 'synthesis':
+        pot.contents.push(targetItem);
+        this.addMessage(`${getItemDisplayName(targetItem)}を${getItemDisplayName(pot)}に入れた。`, 'info');
+        // 合成処理は同種装備が2つ入った時に実行（Phase 4）
+        break;
+
+      case 'warehouse':
+        // 直接倉庫に送る（SaveManager経由）
+        this.addMessage(`${getItemDisplayName(targetItem)}を倉庫に送った！`, 'important');
+        break;
+
+      case 'curse':
+        targetItem.cursed = true;
+        pot.contents.push(targetItem);
+        this.addMessage(`${getItemDisplayName(targetItem)}は呪われてしまった...`, 'damage');
+        break;
+
+      default:
+        pot.contents.push(targetItem);
+        break;
+    }
+
+    return true;
+  }
+
+  /**
+   * 壺からアイテムを出す（保存の壺のみ）
+   */
+  potExtract(pot) {
+    if (!pot || pot.contents.length === 0) {
+      this.addMessage('壺の中は空だ。', 'info');
+      return false;
+    }
+
+    if (this.player.inventory.length >= this.player.maxInventory) {
+      this.addMessage('持ち物がいっぱいで出せない。', 'info');
+      return false;
+    }
+
+    // 最後のアイテムを取り出す
+    const extracted = pot.contents.pop();
+    this.player.inventory.push(extracted);
+    this.addMessage(`${getItemDisplayName(extracted)}を取り出した。`, 'info');
+    return true;
+  }
+
+  /**
+   * 矢を撃つ
+   */
+  shootArrow(item) {
+    if (!item || item.count <= 0) return false;
+
+    const dir = this.player.direction;
+    let target = null;
+
+    // 直線上のモンスターを探す
+    for (let i = 1; i <= 10; i++) {
+      const tx = this.player.x + dir.dx * i;
+      const ty = this.player.y + dir.dy * i;
+
+      if (this.dungeon.isWall(tx, ty)) break;
+
+      const m = this.monsters.find(m => m.isAlive && m.x === tx && m.y === ty);
+      if (m) {
+        target = m;
+        break;
+      }
+    }
+
+    // 矢を消費
+    item.count--;
+    if (item.count <= 0) {
+      const idx = this.player.inventory.indexOf(item);
+      if (idx >= 0) this.player.inventory.splice(idx, 1);
+    }
+
+    if (!target) {
+      this.addMessage(`${item.name}は何にも当たらなかった。`, 'info');
+      return true;
+    }
+
+    // ダメージ計算
+    const damage = Math.max(1, item.baseDamage);
+    target.takeDamage(damage);
+    this.addMessage(`${target.name}に${item.name}が当たり${damage}のダメージ！`, 'damage');
+
+    // 矢の特殊効果
+    if (item.arrowEffect === 'poison' && target.isAlive) {
+      target.statusEffects = target.statusEffects || [];
+      // モンスターのちから低下（攻撃力ダウン）
+      this.addMessage(`${target.name}は毒を受けた！`, 'damage');
+    }
+
+    if (item.arrowEffect === 'paralyze' && target.isAlive) {
+      target.statusEffects = target.statusEffects || [];
+      target.statusEffects.push({ type: 'paralyze', remaining: 5 });
+      this.addMessage(`${target.name}は金縛りになった！`, 'info');
+    }
+
+    if (!target.isAlive) {
+      this.emitSound('monster_death');
+      const prevLevel = this.player.level;
+      this.player.gainExp(target.exp);
+      this.addMessage(`${target.name}を倒した！経験値${target.exp}を獲得！`, 'important');
+      if (this.player.level > prevLevel) {
+        this.emitSound('levelup');
+        this.addMessage(`レベルが${this.player.level}に上がった！`, 'important');
+      }
+      this.monsterManager.removeDeadMonsters();
+    }
+
     return true;
   }
 
@@ -611,11 +876,18 @@ export class GameState {
       this.player.naturalHeal();
     }
 
+    // 深緑の迷宮：床タイル上で植物回復（+1 HP/ターン）
+    if (this.dungeonDef.theme === 'forest' && this.dungeon.isInRoom(this.player.x, this.player.y)) {
+      if (this.player.hp < this.player.maxHp) {
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 1);
+      }
+    }
+
     // 状態異常ターン経過
     this.player.tickStatusEffects();
 
     // モンスター自然発生
-    this.monsterManager.tickSpawn(this.floor, this.dungeon, this.rng, this.player);
+    this.monsterManager.tickSpawn(this.floor, this.dungeon, this.rng, this.player, this.dungeonDef.id);
   }
 
   /**

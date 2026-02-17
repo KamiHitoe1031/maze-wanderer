@@ -369,12 +369,12 @@ export class MonsterManager {
   /**
    * フロア初期化時にモンスターを配置
    */
-  initFloor(floor, dungeon, rng, player) {
+  initFloor(floor, dungeon, rng, player, dungeonId = 'dungeon_1') {
     this.monsters = [];
     this.spawnTimer = 0;
 
     // 出現可能なモンスターリスト
-    const spawnableIds = getSpawnableMonsters(floor);
+    const spawnableIds = getSpawnableMonsters(floor, dungeonId);
     if (spawnableIds.length === 0) return;
 
     // 各部屋に1～2体配置
@@ -394,8 +394,8 @@ export class MonsterManager {
       }
     }
 
-    // フロアボスを配置（5F, 10F, 15F, 20F）
-    const boss = getFloorBoss(floor);
+    // フロアボスを配置
+    const boss = getFloorBoss(floor, dungeonId);
     if (boss) {
       // 階段の近くにボスを配置
       const stairsPos = dungeon.stairsPos;
@@ -418,14 +418,14 @@ export class MonsterManager {
   /**
    * 自然発生チェック
    */
-  tickSpawn(floor, dungeon, rng, player) {
+  tickSpawn(floor, dungeon, rng, player, dungeonId = 'dungeon_1') {
     this.spawnTimer++;
 
     if (this.spawnTimer >= this.spawnInterval) {
       this.spawnTimer = 0;
 
       if (this.monsters.length < this.maxMonsters) {
-        const spawnableIds = getSpawnableMonsters(floor);
+        const spawnableIds = getSpawnableMonsters(floor, dungeonId);
         if (spawnableIds.length > 0) {
           // プレイヤーから離れた位置に生成
           for (let attempt = 0; attempt < 10; attempt++) {
@@ -496,7 +496,7 @@ export class MonsterManager {
 
         switch (action.type) {
           case 'attack': {
-            const attackResult = combat.monsterAttack(monster, player);
+            const attackResult = combat.monsterAttack(monster, player, dungeon);
 
             // 通常攻撃に追加される特殊効果
             if (attackResult.hit) {
@@ -779,7 +779,7 @@ export class MonsterManager {
       case 'summon': {
         // 周囲に味方モンスターを召喚
         let summoned = 0;
-        const spawnableIds = getSpawnableMonsters(gameState ? gameState.floor : 20);
+        const spawnableIds = getSpawnableMonsters(gameState ? gameState.floor : 20, gameState?.dungeonDef?.id);
         if (spawnableIds.length > 0) {
           for (const dir of DIRECTIONS) {
             if (summoned >= 3) break;
