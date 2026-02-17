@@ -44,6 +44,11 @@ class Game {
       this.sound.play(soundKey);
     };
 
+    // 全画像ロード完了時に再描画
+    this.renderer.spriteManager.onAllLoaded = () => {
+      this.render();
+    };
+
     // 初期視界を更新
     this.renderer.updateVisibility(this.gameState.player, this.gameState.dungeon);
 
