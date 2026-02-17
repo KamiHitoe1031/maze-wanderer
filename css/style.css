@@ -34,6 +34,42 @@ body {
   border-radius: 8px;
 }
 
+/* サイドパネル */
+#side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+/* ミニマップパネル */
+#minimap-panel {
+  background-color: #16213e;
+  border: 2px solid #4a5568;
+  border-radius: 8px;
+  padding: 10px;
+  width: 170px;
+}
+
+.panel-title {
+  text-align: center;
+  color: #ffcc00;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+#minimap-canvas {
+  display: block;
+  width: 150px;
+  height: 112px;
+  margin: 0 auto;
+  background-color: #000;
+  border: 1px solid #4a5568;
+  border-radius: 2px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 /* 操作ガイドパネル */
 #controls-panel {
   background-color: #16213e;

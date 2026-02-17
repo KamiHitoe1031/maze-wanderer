@@ -8,6 +8,7 @@ import { InputHandler, ACTION } from './input.js';
 import { UI } from './ui.js';
 import { ITEM_CATEGORY } from './item.js';
 import { SoundManager, SOUND } from './sound-manager.js';
+import { Minimap } from './minimap.js';
 
 class Game {
   constructor() {
@@ -16,6 +17,7 @@ class Game {
     this.input = new InputHandler();
     this.ui = new UI();
     this.sound = new SoundManager();
+    this.minimap = new Minimap(document.getElementById('minimap-canvas'));
     this.gameState = null;
 
     this.isRunning = false;
@@ -140,6 +142,7 @@ class Game {
    */
   render() {
     this.renderer.render(this.gameState);
+    this.minimap.render(this.gameState);
   }
 
   /**
