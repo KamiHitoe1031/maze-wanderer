@@ -43,6 +43,52 @@ function getThreeDirections(dir) {
   ];
 }
 
+// 特効マッピング（effect名 → 対応するモンスターtype）
+const SLAYER_MAP = {
+  'ghost_slayer': 'ghost',
+  'dragon_slayer': 'dragon',
+  'cyclops_slayer': 'cyclops',
+  'drain_slayer': 'drain',
+  'aqua_slayer': 'aquatic'
+};
+
+/**
+ * 武器の全効果を取得（固有effect + 印seals）
+ */
+function getWeaponEffects(weapon) {
+  if (!weapon) return [];
+  const effects = [];
+  if (weapon.effect) effects.push(weapon.effect);
+  if (weapon.seals) {
+    for (const seal of weapon.seals) {
+      if (!seal.startsWith('attackType:')) {
+        effects.push(seal);
+      }
+    }
+  }
+  return effects;
+}
+
+/**
+ * 武器の有効な攻撃タイプを取得（印由来の攻撃タイプも考慮）
+ */
+function getEffectiveAttackType(weapon) {
+  if (!weapon) return 'melee';
+  // 武器本来のattackType
+  const baseType = weapon.attackType || 'melee';
+  if (baseType !== 'melee') return baseType;
+
+  // melee武器の場合、印に攻撃タイプがあればそれを使う
+  if (weapon.seals) {
+    for (const seal of weapon.seals) {
+      if (seal.startsWith('attackType:')) {
+        return seal.split(':')[1];
+      }
+    }
+  }
+  return baseType;
+}
+
 export class Combat {
   constructor(rng) {
     this.rng = rng;
@@ -88,12 +134,36 @@ export class Combat {
 
     const attack = player.getAttack();
     const defense = monster.getDefense();
-    const damage = this.calculateDamage(attack, defense);
+    let damage = this.calculateDamage(attack, defense);
+
+    // 武器特効チェック（固有effect + 印）
+    const effects = getWeaponEffects(player.weapon);
+    let slayerApplied = false;
+    for (const eff of effects) {
+      const targetType = SLAYER_MAP[eff];
+      if (targetType && monster.type === targetType) {
+        damage = Math.floor(damage * 2);
+        slayerApplied = true;
+        break;
+      }
+    }
 
     monster.takeDamage(damage);
     result.damage = damage;
     result.success = true;
     result.message = `${monster.name}に${damage}のダメージを与えた！`;
+    if (slayerApplied) {
+      result.message = `弱点を突いた！${monster.name}に${damage}のダメージ！`;
+    }
+
+    // 麻痺効果チェック（paralyze_10: 10%で麻痺）
+    if (monster.isAlive && effects.includes('paralyze_10')) {
+      if (this.rng.chance(0.1)) {
+        monster.statusEffects = monster.statusEffects || [];
+        monster.statusEffects.push({ type: 'paralyze', remaining: 5 });
+        result.message += `\n${monster.name}は金縛りになった！`;
+      }
+    }
 
     if (!monster.isAlive) {
       result.killed = true;
@@ -162,7 +232,7 @@ export class Combat {
    */
   resolveWeaponAttack(player, monsters, dungeon) {
     const weapon = player.weapon;
-    const attackType = weapon?.attackType || 'melee';
+    const attackType = getEffectiveAttackType(weapon);
 
     switch (attackType) {
       case 'melee':
