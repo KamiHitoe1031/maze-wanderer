@@ -52,6 +52,27 @@ const SLAYER_MAP = {
   'aqua_slayer': 'aquatic'
 };
 
+// 状態異常付与マッピング（seal名 → { chance, type, remaining, damage? }）
+const STATUS_INFLICT_MAP = {
+  'poison_hit':   { chance: 0.15, type: 'poison',    remaining: 10, damage: 1 },
+  'burn_hit':     { chance: 0.15, type: 'burn',      remaining: 8,  damage: 2 },
+  'confuse_hit':  { chance: 0.12, type: 'confusion', remaining: 10 },
+  'sleep_hit':    { chance: 0.10, type: 'sleep',     remaining: 6 },
+  'slow_hit':     { chance: 0.12, type: 'slow',      remaining: 10 },
+  'seal_hit':     { chance: 0.10, type: 'seal',      remaining: 15 },
+};
+
+// 状態異常の日本語名
+const STATUS_NAME_JP = {
+  'poison': '毒',
+  'burn': '火傷',
+  'confusion': '混乱',
+  'sleep': '睡眠',
+  'slow': '鈍足',
+  'seal': '封印',
+  'paralyze': '金縛り',
+};
+
 /**
  * 武器の全効果を取得（固有effect + 印seals）
  */
@@ -156,12 +177,64 @@ export class Combat {
       result.message = `弱点を突いた！${monster.name}に${damage}のダメージ！`;
     }
 
+    // --- 追加ダメージ系 ---
+
+    // bonus_damage: 強化値に応じた追加ダメージ
+    if (effects.includes('bonus_damage') && player.weapon) {
+      const bonusDmg = Math.max(0, Math.floor((player.weapon.enhance || 0) * 0.5));
+      if (bonusDmg > 0) {
+        monster.takeDamage(bonusDmg);
+        result.damage += bonusDmg;
+        result.message += `\n追加ダメージ+${bonusDmg}！`;
+      }
+    }
+
+    // critical_hit: 25%の確率で会心の一撃（1.5倍ダメージ）
+    if (effects.includes('critical_hit') && !result.critical) {
+      if (this.rng.chance(0.25)) {
+        const critDmg = Math.floor(damage * 0.5);
+        monster.takeDamage(critDmg);
+        result.damage += critDmg;
+        result.critical = true;
+        result.message = `会心の一撃！${monster.name}に${result.damage}のダメージ！`;
+      }
+    }
+
+    // hp_drain: ダメージの1/4を吸収
+    if (effects.includes('hp_drain') && result.damage > 0) {
+      const drainAmount = Math.max(1, Math.floor(result.damage / 4));
+      player.heal(drainAmount);
+      result.message += `\nHPを${drainAmount}吸収した！`;
+    }
+
+    // --- 状態異常付与系 ---
+
     // 麻痺効果チェック（paralyze_10: 10%で麻痺）
     if (monster.isAlive && effects.includes('paralyze_10')) {
       if (this.rng.chance(0.1)) {
         monster.statusEffects = monster.statusEffects || [];
-        monster.statusEffects.push({ type: 'paralyze', remaining: 5 });
-        result.message += `\n${monster.name}は金縛りになった！`;
+        if (!monster.hasStatusEffect('paralyze')) {
+          monster.statusEffects.push({ type: 'paralyze', remaining: 5 });
+          result.message += `\n${monster.name}は金縛りになった！`;
+        }
+      }
+    }
+
+    // 新状態異常付与（poison_hit, burn_hit, confuse_hit, sleep_hit, slow_hit, seal_hit）
+    if (monster.isAlive) {
+      for (const eff of effects) {
+        const inflict = STATUS_INFLICT_MAP[eff];
+        if (inflict && this.rng.chance(inflict.chance)) {
+          monster.statusEffects = monster.statusEffects || [];
+          if (!monster.hasStatusEffect(inflict.type)) {
+            const statusEntry = { type: inflict.type, remaining: inflict.remaining };
+            if (inflict.damage) statusEntry.damage = inflict.damage;
+            monster.statusEffects.push(statusEntry);
+            const jpName = STATUS_NAME_JP[inflict.type] || inflict.type;
+            result.message += `\n${monster.name}は${jpName}状態になった！`;
+          }
+          break; // 1回の攻撃で複数の状態異常は付与しない
+        }
       }
     }
 
@@ -186,7 +259,14 @@ export class Combat {
       message: ''
     };
 
-    if (!this.checkHit(HIT_RATE.MONSTER_ATTACK)) {
+    // 盾の回避率ボーナス
+    let missRate = 1 - HIT_RATE.MONSTER_ATTACK;
+    if (player.hasShieldEffect && player.hasShieldEffect('evasion')) {
+      missRate += 0.22;
+    }
+    const effectiveHitRate = 1 - missRate;
+
+    if (!this.checkHit(effectiveHitRate)) {
       result.message = `${monster.name}の攻撃を避けた！`;
       return result;
     }
@@ -208,6 +288,16 @@ export class Combat {
     result.damage = damage;
     result.success = true;
     result.message = `${monster.name}から${damage}のダメージを受けた！`;
+
+    // 棘の盾（counter）: ダメージの1/4を反射
+    if (player.hasShieldEffect && player.hasShieldEffect('counter') && damage > 0 && monster.isAlive) {
+      const counterDmg = Math.max(1, Math.floor(damage / 4));
+      monster.takeDamage(counterDmg);
+      result.message += `\n棘の盾が${counterDmg}のダメージを跳ね返した！`;
+      if (!monster.isAlive) {
+        result.message += `\n${monster.name}を倒した！`;
+      }
+    }
 
     if (!player.isAlive) {
       result.killed = true;

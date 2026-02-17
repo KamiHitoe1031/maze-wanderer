@@ -12,7 +12,23 @@ import urllib.error
 from pathlib import Path
 
 # --- Config ---
-API_KEY = "***REMOVED***"
+# APIキーは secrets/api-keys.secrets.md に記載。環境変数 or secrets/ から読み込み
+def _load_api_key():
+    key = os.environ.get("ELEVENLABS_API_KEY")
+    if key:
+        return key
+    secrets_path = Path(__file__).resolve().parent.parent / "secrets" / "api-keys.secrets.md"
+    if secrets_path.exists():
+        import re
+        text = secrets_path.read_text(encoding="utf-8")
+        m = re.search(r"## ElevenLabs API Key\s*```\s*(\S+)\s*```", text)
+        if m:
+            return m.group(1)
+    print("ERROR: APIキーが見つかりません。")
+    print("  環境変数 ELEVENLABS_API_KEY を設定するか、secrets/api-keys.secrets.md を配置してください。")
+    sys.exit(1)
+
+API_KEY = _load_api_key()
 API_URL = "https://api.elevenlabs.io/v1/sound-generation"
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

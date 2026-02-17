@@ -49,13 +49,24 @@ export class Monster {
 
     // 倍速行動のためのフラグ
     this.actedThisTurn = false;
+
+    // 状態異常
+    this.statusEffects = [];
+
+    // 鈍足トグル（鈍足状態で行動スキップ用）
+    this.slowToggle = false;
   }
 
   /**
    * 攻撃力を取得
    */
   getAttack() {
-    return this.atk;
+    let atk = this.atk;
+    // 火傷状態: 攻撃力-20%
+    if (this.hasStatusEffect('burn')) {
+      atk = Math.floor(atk * 0.8);
+    }
+    return atk;
   }
 
   /**
@@ -63,6 +74,49 @@ export class Monster {
    */
   getDefense() {
     return this.def;
+  }
+
+  /**
+   * 状態異常を持っているか
+   */
+  hasStatusEffect(type) {
+    return this.statusEffects.some(e => e.type === type);
+  }
+
+  /**
+   * 状態異常ターン経過（毎ターン呼ぶ）
+   */
+  tickStatusEffects() {
+    const tickResults = [];
+    this.statusEffects = this.statusEffects.filter(effect => {
+      if (effect.remaining === -1) return true; // 永続
+
+      // 毒：毎ターンダメージ
+      if (effect.type === 'poison' && this.isAlive) {
+        const dmg = effect.damage || 1;
+        this.hp -= dmg;
+        if (this.hp <= 0) {
+          this.hp = 0;
+          this.isAlive = false;
+        }
+        tickResults.push({ type: 'poison', monster: this, damage: dmg });
+      }
+
+      // 火傷：毎ターンダメージ
+      if (effect.type === 'burn' && this.isAlive) {
+        const dmg = effect.damage || 2;
+        this.hp -= dmg;
+        if (this.hp <= 0) {
+          this.hp = 0;
+          this.isAlive = false;
+        }
+        tickResults.push({ type: 'burn', monster: this, damage: dmg });
+      }
+
+      effect.remaining--;
+      return effect.remaining > 0;
+    });
+    return tickResults;
   }
 
   /**
@@ -74,6 +128,12 @@ export class Monster {
       this.hp = 0;
       this.isAlive = false;
     }
+
+    // ダメージで睡眠から覚める
+    if (amount > 0 && this.hasStatusEffect('sleep')) {
+      this.statusEffects = this.statusEffects.filter(e => e.type !== 'sleep');
+    }
+
     return amount;
   }
 
@@ -97,6 +157,48 @@ export class Monster {
   decideAction(player, dungeon, monsters, gameState) {
     if (!this.isAlive) return null;
 
+    // --- 状態異常による行動制限 ---
+
+    // 金縛り: 行動不能
+    if (this.hasStatusEffect('paralyze')) {
+      return { type: 'wait' };
+    }
+
+    // 睡眠: 行動不能
+    if (this.hasStatusEffect('sleep')) {
+      return { type: 'wait' };
+    }
+
+    // 鈍足: 2ターンに1回行動スキップ
+    if (this.hasStatusEffect('slow')) {
+      this.slowToggle = !this.slowToggle;
+      if (this.slowToggle) {
+        return { type: 'wait' };
+      }
+    }
+
+    // 混乱: ランダム方向に移動 or 攻撃
+    if (this.hasStatusEffect('confusion')) {
+      const randomDir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
+      const tx = this.x + randomDir.dx;
+      const ty = this.y + randomDir.dy;
+
+      // ランダム方向にプレイヤーがいたら攻撃
+      if (player.x === tx && player.y === ty) {
+        return { type: 'attack', target: player };
+      }
+
+      // 移動可能なら移動
+      if (this.canMoveTo(tx, ty, dungeon, monsters, player)) {
+        return { type: 'move', dx: randomDir.dx, dy: randomDir.dy };
+      }
+
+      return { type: 'wait' };
+    }
+
+    // 封印: 特殊能力を使えない（通常攻撃と移動のみ）
+    const isSealed = this.hasStatusEffect('seal');
+
     // プレイヤーが同じ部屋にいるか確認
     const myRoom = dungeon.getRoomAt(this.x, this.y);
     const playerRoom = dungeon.getRoomAt(player.x, player.y);
@@ -109,6 +211,7 @@ export class Monster {
 
     // --- 特殊能力チェック（攻撃の前に） ---
 
+    if (!isSealed) {
     // 爆発系: HP半分以下で爆発
     if (this.hp <= this.maxHp / 2) {
       if (this.hasAbility('explode_30') && distance <= 1) {
@@ -181,6 +284,7 @@ export class Monster {
     if (this.hasAbility('summon') && Math.random() < 0.15) {
       return { type: 'ability', ability: 'summon' };
     }
+    } // end if (!isSealed)
 
     // --- 通常行動 ---
 
@@ -536,10 +640,17 @@ export class MonsterManager {
    */
   applyOnHitAbilities(monster, player, gameState) {
     const results = [];
+    const hasAntidote = player.hasShieldEffect && player.hasShieldEffect('antidote');
 
     // ちから下げ（吸血コウモリ・毒サソリ系）
     if (monster.hasAbility('drain_strength_1')) {
-      if (player.strength > 1) {
+      if (hasAntidote) {
+        results.push({
+          hit: true,
+          message: `毒消しの盾がちから下げを防いだ！`,
+          damage: 0
+        });
+      } else if (player.strength > 1) {
         player.strength -= 1;
         results.push({
           hit: true,
@@ -549,14 +660,22 @@ export class MonsterManager {
       }
     }
     if (monster.hasAbility('drain_strength_2')) {
-      const drain = Math.min(2, player.strength - 1);
-      if (drain > 0) {
-        player.strength -= drain;
+      if (hasAntidote) {
         results.push({
           hit: true,
-          message: `${monster.name}の攻撃でちからが${drain}下がった！`,
+          message: `毒消しの盾がちから下げを防いだ！`,
           damage: 0
         });
+      } else {
+        const drain = Math.min(2, player.strength - 1);
+        if (drain > 0) {
+          player.strength -= drain;
+          results.push({
+            hit: true,
+            message: `${monster.name}の攻撃でちからが${drain}下がった！`,
+            damage: 0
+          });
+        }
       }
     }
 
@@ -647,8 +766,9 @@ export class MonsterManager {
     }
 
     // 盾の錆（錆カビ）
+    const isRustproof = player.shield && (player.shield.rustproof || (player.hasShieldEffect && player.hasShieldEffect('rustproof')));
     if (monster.hasAbility('rust_shield_1') && player.shield) {
-      if (!player.shield.rustproof && (player.shield.enhance || 0) > 0) {
+      if (!isRustproof && (player.shield.enhance || 0) > 0) {
         player.shield.enhance -= 1;
         results.push({
           hit: true,
@@ -658,7 +778,7 @@ export class MonsterManager {
       }
     }
     if (monster.hasAbility('rust_shield_2') && player.shield) {
-      if (!player.shield.rustproof && (player.shield.enhance || 0) > 0) {
+      if (!isRustproof && (player.shield.enhance || 0) > 0) {
         const drain = Math.min(2, player.shield.enhance);
         player.shield.enhance -= drain;
         results.push({
@@ -678,7 +798,21 @@ export class MonsterManager {
   processAbility(monster, player, dungeon, action, gameState) {
     switch (action.ability) {
       case 'fire_breath': {
-        const damage = action.damage;
+        let damage = action.damage;
+        // 魔法弾よけの盾: 反射
+        if (player.hasShieldEffect && player.hasShieldEffect('magic_reflect')) {
+          monster.takeDamage(damage);
+          return {
+            hit: true,
+            damage: damage,
+            effectKey: 'fire_breath',
+            message: `${monster.name}が炎を吐いた！しかし跳ね返した！${monster.name}に${damage}のダメージ！`
+          };
+        }
+        // 爆発半減の盾
+        if (player.hasShieldEffect && player.hasShieldEffect('blast_guard')) {
+          damage = Math.floor(damage / 2);
+        }
         player.takeDamage(damage);
         return {
           hit: true,
@@ -690,6 +824,16 @@ export class MonsterManager {
 
       case 'ranged': {
         const damage = action.damage;
+        // 魔法弾よけの盾: 反射
+        if (player.hasShieldEffect && player.hasShieldEffect('magic_reflect')) {
+          monster.takeDamage(damage);
+          return {
+            hit: true,
+            damage: damage,
+            effectKey: 'bullet',
+            message: `${monster.name}が弾を撃ってきた！しかし跳ね返した！${monster.name}に${damage}のダメージ！`
+          };
+        }
         player.takeDamage(damage);
         return {
           hit: true,
@@ -703,6 +847,7 @@ export class MonsterManager {
         let damage = action.damage;
         const range = action.range;
         const isFatal = damage === 'fatal';
+        const hasBlastGuard = player.hasShieldEffect && player.hasShieldEffect('blast_guard');
 
         // 爆発ダメージをプレイヤーに与える
         const dist = monster.distanceTo(player);
@@ -710,11 +855,17 @@ export class MonsterManager {
           if (isFatal) {
             // HP1にする
             damage = player.hp - 1;
+            // 爆発半減の盾（致死ダメージでない場合のみ半減）
+            if (hasBlastGuard && damage > 0) {
+              damage = Math.floor(damage / 2);
+            }
             if (damage > 0) {
               player.takeDamage(damage);
             }
           } else {
-            player.takeDamage(damage);
+            // 爆発半減の盾
+            let playerDamage = hasBlastGuard ? Math.floor(damage / 2) : damage;
+            player.takeDamage(playerDamage);
           }
         }
 
@@ -773,6 +924,16 @@ export class MonsterManager {
       case 'aoe': {
         // 全画面攻撃（魔王）
         const damage = action.damage;
+        // 魔法弾よけの盾: 反射
+        if (player.hasShieldEffect && player.hasShieldEffect('magic_reflect')) {
+          monster.takeDamage(damage);
+          return {
+            hit: true,
+            damage: damage,
+            effectKey: 'magic',
+            message: `${monster.name}が暗黒の力を放った！しかし跳ね返した！${monster.name}に${damage}のダメージ！`
+          };
+        }
         player.takeDamage(damage);
         return {
           hit: true,

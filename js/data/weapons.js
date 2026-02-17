@@ -275,6 +275,81 @@ export const WEAPON_DATA = [
     range: 5,
     effect: null,
     description: '投げて戻ってくる。射程5マス。'
+  },
+
+  // === 状態異常付与武器 ===
+  {
+    id: 'poison_dagger',
+    name: '毒の短剣',
+    spriteKey: 'item.weapon.poison_dagger',
+    baseAtk: 4, buyPrice: 3500, sellPrice: 1050, slots: 4,
+    attackType: 'melee', effect: 'poison_hit',
+    description: '15%の確率で毒を与える。'
+  },
+  {
+    id: 'flame_sword',
+    name: '炎の剣',
+    spriteKey: 'item.weapon.flame_sword',
+    baseAtk: 6, buyPrice: 5000, sellPrice: 1500, slots: 4,
+    attackType: 'melee', effect: 'burn_hit',
+    description: '15%の確率で火傷を与える。'
+  },
+  {
+    id: 'sleep_mace',
+    name: '眠りの鉄槌',
+    spriteKey: 'item.weapon.sleep_mace',
+    baseAtk: 5, buyPrice: 4000, sellPrice: 1200, slots: 4,
+    attackType: 'melee', effect: 'sleep_hit',
+    description: '10%の確率で眠らせる。'
+  },
+  {
+    id: 'confusion_staff',
+    name: '混乱の杖剣',
+    spriteKey: 'item.weapon.confusion_staff',
+    baseAtk: 5, buyPrice: 4000, sellPrice: 1200, slots: 4,
+    attackType: 'melee', effect: 'confuse_hit',
+    description: '12%の確率で混乱させる。'
+  },
+  {
+    id: 'slow_whip',
+    name: '鈍足の鞭',
+    spriteKey: 'item.weapon.slow_whip',
+    baseAtk: 5, buyPrice: 4000, sellPrice: 1200, slots: 4,
+    attackType: 'whip', range: 3, effect: 'slow_hit',
+    description: '12%の確率で鈍足にする。射程3マス。'
+  },
+  {
+    id: 'seal_blade',
+    name: '封印の刃',
+    spriteKey: 'item.weapon.seal_blade',
+    baseAtk: 5, buyPrice: 5000, sellPrice: 1500, slots: 4,
+    attackType: 'melee', effect: 'seal_hit',
+    description: '10%の確率で特殊能力を封印する。'
+  },
+  // === ダメージ系特殊武器 ===
+  {
+    id: 'critical_axe',
+    name: '必殺の斧',
+    spriteKey: 'item.weapon.critical_axe',
+    baseAtk: 7, buyPrice: 6000, sellPrice: 1800, slots: 5,
+    attackType: 'melee', effect: 'critical_hit',
+    description: '25%の確率で会心の一撃。'
+  },
+  {
+    id: 'life_drain_sword',
+    name: '吸血の剣',
+    spriteKey: 'item.weapon.life_drain_sword',
+    baseAtk: 5, buyPrice: 6000, sellPrice: 1800, slots: 4,
+    attackType: 'melee', effect: 'hp_drain',
+    description: 'ダメージの1/4のHP吸収。'
+  },
+  {
+    id: 'bonus_blade',
+    name: '重撃の剣',
+    spriteKey: 'item.weapon.bonus_blade',
+    baseAtk: 3, buyPrice: 5000, sellPrice: 1500, slots: 5,
+    attackType: 'melee', effect: 'bonus_damage',
+    description: '強化値に応じた追加ダメージ。'
   }
 ];
 

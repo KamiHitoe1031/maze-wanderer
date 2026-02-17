@@ -117,10 +117,32 @@ export class Player {
   }
 
   /**
+   * 盾の全効果を取得（固有effect + 印seals）
+   */
+  getShieldEffects() {
+    if (!this.shield) return [];
+    const effects = [];
+    if (this.shield.effect) effects.push(this.shield.effect);
+    if (this.shield.seals) {
+      for (const seal of this.shield.seals) {
+        effects.push(seal);
+      }
+    }
+    return effects;
+  }
+
+  /**
+   * 盾に特定の効果があるか
+   */
+  hasShieldEffect(effectName) {
+    return this.getShieldEffects().includes(effectName);
+  }
+
+  /**
    * 満腹の盾を装備しているか
    */
   hasFullnessShield() {
-    return this.shield && this.shield.effect === 'fullness';
+    return this.hasShieldEffect('fullness');
   }
 
   /**

@@ -1004,6 +1004,23 @@ export class GameState {
     // 状態異常ターン経過
     this.player.tickStatusEffects();
 
+    // モンスター状態異常ターン経過
+    for (const monster of this.monsters) {
+      if (!monster.isAlive) continue;
+      const tickResults = monster.tickStatusEffects();
+      for (const result of tickResults) {
+        if (result.type === 'poison') {
+          this.addMessage(`${monster.name}は毒で${result.damage}ダメージを受けた！`);
+        } else if (result.type === 'burn') {
+          this.addMessage(`${monster.name}は火傷で${result.damage}ダメージを受けた！`);
+        }
+      }
+      if (!monster.isAlive) {
+        this.addMessage(`${monster.name}は倒れた！`);
+      }
+    }
+    this.monsterManager.removeDeadMonsters();
+
     // モンスター自然発生
     this.monsterManager.tickSpawn(this.floor, this.dungeon, this.rng, this.player, this.dungeonDef.id);
   }

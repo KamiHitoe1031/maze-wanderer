@@ -193,6 +193,15 @@ export const SPRITE_DEFS = {
   'item.weapon.vine_whip':       { imagePath: 'assets/items/vine_whip.png',       fallbackChar: ')', fallbackColor: '#44AA44' },
   'item.weapon.war_hammer':      { imagePath: 'assets/items/war_hammer.png',      fallbackChar: ')', fallbackColor: '#888899' },
   'item.weapon.boomerang':       { imagePath: 'assets/items/boomerang.png',       fallbackChar: ')', fallbackColor: '#44AACC' },
+  'item.weapon.poison_dagger':   { imagePath: 'assets/items/poison_dagger.png',   fallbackChar: ')', fallbackColor: '#88CC44' },
+  'item.weapon.flame_sword':     { imagePath: 'assets/items/flame_sword.png',     fallbackChar: ')', fallbackColor: '#FF6622' },
+  'item.weapon.sleep_mace':      { imagePath: 'assets/items/sleep_mace.png',      fallbackChar: ')', fallbackColor: '#6688CC' },
+  'item.weapon.confusion_staff': { imagePath: 'assets/items/confusion_staff.png', fallbackChar: ')', fallbackColor: '#CC66CC' },
+  'item.weapon.slow_whip':       { imagePath: 'assets/items/slow_whip.png',       fallbackChar: ')', fallbackColor: '#8888AA' },
+  'item.weapon.seal_blade':      { imagePath: 'assets/items/seal_blade.png',      fallbackChar: ')', fallbackColor: '#4488AA' },
+  'item.weapon.critical_axe':    { imagePath: 'assets/items/critical_axe.png',    fallbackChar: ')', fallbackColor: '#DD4444' },
+  'item.weapon.life_drain_sword':{ imagePath: 'assets/items/life_drain_sword.png',fallbackChar: ')', fallbackColor: '#CC2244' },
+  'item.weapon.bonus_blade':     { imagePath: 'assets/items/bonus_blade.png',     fallbackChar: ')', fallbackColor: '#DDAA44' },
 
   // --- 盾（個別） ---
   'item.shield.wooden_shield':    { imagePath: 'assets/items/wooden_shield.png',    fallbackChar: '[', fallbackColor: '#AA8855' },

@@ -10,6 +10,7 @@ import { FOOD_DATA } from './data/food.js';
 import { RING_DATA } from './data/rings.js';
 import { POT_DATA } from './data/pots.js';
 import { ARROW_DATA } from './data/arrows.js';
+import { SEAL_DATA, getSealDisplayChar } from './data/seals.js';
 
 // アイテムカテゴリ
 export const ITEM_CATEGORY = {
@@ -72,6 +73,8 @@ export function createItem(dataId, category, options = {}) {
       item.enhance = options.enhance ?? 0;
       item.slots = data.slots;
       item.effect = data.effect;
+      item.attackType = data.attackType || 'melee';
+      if (data.range) item.range = data.range;
       item.seals = [];
       break;
 
@@ -176,6 +179,12 @@ export function getItemDisplayName(item) {
     name += `[${item.contents ? item.contents.length : 0}/${item.capacity}]`;
   }
 
+  // 印表示（武器・盾）
+  if ((item.category === ITEM_CATEGORY.WEAPON || item.category === ITEM_CATEGORY.SHIELD) && item.seals && item.seals.length > 0) {
+    const sealChars = item.seals.map(s => getSealDisplayChar(s)).join('');
+    name += `【${sealChars}】`;
+  }
+
   // 呪い
   if (item.cursed) {
     name += '【呪】';
@@ -232,6 +241,8 @@ const FLOOR_ITEM_TABLE = {
       { id: 'copper_sword', category: ITEM_CATEGORY.WEAPON, weight: 3 },
       { id: 'spirit_sword', category: ITEM_CATEGORY.WEAPON, weight: 1 },
       { id: 'dragon_sword', category: ITEM_CATEGORY.WEAPON, weight: 1 },
+      { id: 'poison_dagger', category: ITEM_CATEGORY.WEAPON, weight: 1 },
+      { id: 'confusion_staff', category: ITEM_CATEGORY.WEAPON, weight: 1 },
       { id: 'iron_shield', category: ITEM_CATEGORY.SHIELD, weight: 5 },
       { id: 'copper_shield', category: ITEM_CATEGORY.SHIELD, weight: 3 },
       { id: 'evasion_shield', category: ITEM_CATEGORY.SHIELD, weight: 1 },
@@ -274,6 +285,13 @@ const FLOOR_ITEM_TABLE = {
       { id: 'iron_katana', category: ITEM_CATEGORY.WEAPON, weight: 3 },
       { id: 'kamaitachi', category: ITEM_CATEGORY.WEAPON, weight: 1 },
       { id: 'legendary_sword', category: ITEM_CATEGORY.WEAPON, weight: 0.3 },
+      { id: 'flame_sword', category: ITEM_CATEGORY.WEAPON, weight: 1 },
+      { id: 'sleep_mace', category: ITEM_CATEGORY.WEAPON, weight: 1 },
+      { id: 'seal_blade', category: ITEM_CATEGORY.WEAPON, weight: 0.8 },
+      { id: 'critical_axe', category: ITEM_CATEGORY.WEAPON, weight: 0.8 },
+      { id: 'life_drain_sword', category: ITEM_CATEGORY.WEAPON, weight: 0.6 },
+      { id: 'bonus_blade', category: ITEM_CATEGORY.WEAPON, weight: 0.8 },
+      { id: 'slow_whip', category: ITEM_CATEGORY.WEAPON, weight: 0.8 },
       { id: 'steel_shield', category: ITEM_CATEGORY.SHIELD, weight: 4 },
       { id: 'iron_shield', category: ITEM_CATEGORY.SHIELD, weight: 3 },
       { id: 'fullness_shield', category: ITEM_CATEGORY.SHIELD, weight: 1 },
