@@ -43,6 +43,9 @@ export class Renderer {
    * 全体を描画
    */
   render(gameState) {
+    // アニメーション完了後の再描画用にゲーム状態を保持
+    this._lastGameState = gameState;
+
     // 画面クリア
     this.ctx.fillStyle = '#000000';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -215,19 +218,68 @@ export class Renderer {
   }
 
   /**
-   * 攻撃エフェクトを描画
+   * 攻撃エフェクトを描画（アニメーション対応）
+   * @param {number} x - ワールドX
+   * @param {number} y - ワールドY
+   * @param {function} callback - 完了時コールバック
+   * @param {string} effectKey - エフェクト種別（'attack','slash','blunt'等）
    */
-  drawAttackEffect(x, y, callback) {
+  drawAttackEffect(x, y, callback, effectKey = 'attack') {
     const screenX = (x - this.cameraX) * this.tileSize;
     const screenY = (y - this.cameraY) * this.tileSize;
 
-    // 簡単なフラッシュエフェクト
-    this.spriteManager.draw(this.ctx, 'effect.attack', screenX, screenY);
+    const animKey = `anim.${effectKey}`;
+    const hasSheet = this.spriteManager.sheets.has(animKey);
 
-    // 短時間後に再描画でエフェクトを消す
-    setTimeout(() => {
-      if (callback) callback();
-    }, 100);
+    if (hasSheet) {
+      // スプライトシートアニメーション再生
+      this.spriteManager.playAnimation(animKey, screenX, screenY, {
+        frameDuration: 60,
+        onComplete: () => {
+          if (callback) callback();
+        }
+      });
+
+      // アニメーションループ開始（まだ動いていなければ）
+      if (!this._animLoopRunning) {
+        this._startAnimLoop();
+      }
+    } else {
+      // フォールバック：静止画フラッシュ
+      const staticKey = `effect.${effectKey}`;
+      this.spriteManager.draw(this.ctx, staticKey, screenX, screenY);
+      setTimeout(() => {
+        if (callback) callback();
+      }, 100);
+    }
+  }
+
+  /**
+   * アニメーションループ（requestAnimationFrame）
+   */
+  _startAnimLoop() {
+    if (this._animLoopRunning) return;
+    this._animLoopRunning = true;
+    let lastTime = performance.now();
+
+    const loop = (now) => {
+      const delta = now - lastTime;
+      lastTime = now;
+
+      if (this.spriteManager.hasActiveAnimations()) {
+        // アニメーションフレームだけ重ね描画
+        this.spriteManager.updateAnimations(this.ctx, delta);
+        requestAnimationFrame(loop);
+      } else {
+        this._animLoopRunning = false;
+        // アニメーション完了後に画面を再描画して残像を消す
+        if (this._lastGameState) {
+          this.render(this._lastGameState);
+        }
+      }
+    };
+
+    requestAnimationFrame(loop);
   }
 
   /**
