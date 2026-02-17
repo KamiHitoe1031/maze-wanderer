@@ -256,7 +256,7 @@ export const SPRITE_DEFS = {
   'trap.whirlpool':     { imagePath: 'assets/tiles/trap_whirl.png',    fallbackChar: '^', fallbackColor: '#4488CC', fallbackBg: '#1A1815' },
   'trap.flood':         { imagePath: 'assets/tiles/trap_flood.png',    fallbackChar: '^', fallbackColor: '#4466AA', fallbackBg: '#1A1815' },
 
-  // --- エフェクト ---
+  // --- エフェクト（静止画） ---
   'effect.attack':      { imagePath: 'assets/effects/attack.png',      fallbackChar: '*', fallbackColor: '#FFFFFF' },
   'effect.magic':       { imagePath: 'assets/effects/magic.png',       fallbackChar: '*', fallbackColor: '#AA44FF' },
   'effect.damage':      { imagePath: 'assets/effects/damage.png',      fallbackChar: '!', fallbackColor: '#FF4444' },
@@ -269,6 +269,20 @@ export const SPRITE_DEFS = {
   'effect.levelup':     { imagePath: 'assets/effects/levelup.png',     fallbackChar: '!', fallbackColor: '#FFD700' },
   'effect.steal':       { imagePath: 'assets/effects/steal.png',       fallbackChar: '>', fallbackColor: '#FF88AA' },
   'effect.bullet':      { imagePath: 'assets/effects/bullet.png',      fallbackChar: 'o', fallbackColor: '#CCCCCC' },
+
+  // --- エフェクト（スプライトシートアニメーション） ---
+  'anim.attack':      { sheetPath: 'assets/effects/attack_sheet.png',      frames: 4, fallbackChar: '*', fallbackColor: '#FFFFFF' },
+  'anim.slash':       { sheetPath: 'assets/effects/slash_sheet.png',       frames: 4, fallbackChar: '/', fallbackColor: '#FFFFFF' },
+  'anim.blunt':       { sheetPath: 'assets/effects/blunt_sheet.png',       frames: 4, fallbackChar: '*', fallbackColor: '#FFDD44' },
+  'anim.magic':       { sheetPath: 'assets/effects/magic_sheet.png',       frames: 4, fallbackChar: '*', fallbackColor: '#AA44FF' },
+  'anim.fire_breath': { sheetPath: 'assets/effects/fire_breath_sheet.png', frames: 4, fallbackChar: '*', fallbackColor: '#FF4422' },
+  'anim.explosion':   { sheetPath: 'assets/effects/explosion_sheet.png',   frames: 4, fallbackChar: '*', fallbackColor: '#FF8800' },
+  'anim.wind':        { sheetPath: 'assets/effects/wind_sheet.png',        frames: 4, fallbackChar: '~', fallbackColor: '#44CC88' },
+  'anim.heal':        { sheetPath: 'assets/effects/heal_sheet.png',        frames: 4, fallbackChar: '+', fallbackColor: '#44FF44' },
+  'anim.levelup':     { sheetPath: 'assets/effects/levelup_sheet.png',     frames: 4, fallbackChar: '!', fallbackColor: '#FFD700' },
+  'anim.damage':      { sheetPath: 'assets/effects/damage_sheet.png',      frames: 4, fallbackChar: '!', fallbackColor: '#FF4444' },
+  'anim.bullet':      { sheetPath: 'assets/effects/bullet_sheet.png',      frames: 4, fallbackChar: 'o', fallbackColor: '#CCCCCC' },
+  'anim.steal':       { sheetPath: 'assets/effects/steal_sheet.png',       frames: 4, fallbackChar: '>', fallbackColor: '#FF88AA' },
 
   // --- 不可視タイル（Fog of War） ---
   'tile.fog':         { imagePath: null, fallbackChar: ' ', fallbackColor: '#222222', fallbackBg: '#111111' },
