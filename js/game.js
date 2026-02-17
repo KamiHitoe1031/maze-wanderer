@@ -127,7 +127,19 @@ export class GameState {
   getWeaponEffectKey() {
     const weapon = this.player.weapon;
     if (!weapon) return 'slash';
-    switch (weapon.attackType) {
+
+    // 印由来の攻撃タイプも考慮
+    let attackType = weapon.attackType || 'melee';
+    if (attackType === 'melee' && weapon.seals) {
+      for (const seal of weapon.seals) {
+        if (seal.startsWith('attackType:')) {
+          attackType = seal.split(':')[1];
+          break;
+        }
+      }
+    }
+
+    switch (attackType) {
       case 'bow':       return 'bullet';
       case 'spear':     return 'slash';
       case 'whip':      return 'wind';
@@ -752,24 +764,48 @@ export class GameState {
         const synthesize = (items) => {
           if (items.length < 2) return;
           const base = items[0];
+          base.seals = base.seals || [];
+          const maxSeals = base.slots || 4;
+          const sealsBefore = base.seals.length;
+
           for (let i = 1; i < items.length; i++) {
             const material = items[i];
             // 強化値を合算
             base.enhance = (base.enhance || 0) + (material.enhance || 0);
-            // 印（特殊効果）を移植
+
+            // 素材の固有効果（effect）を印として移植
+            if (material.effect && material.effect !== base.effect) {
+              if (base.seals.length < maxSeals && !base.seals.includes(material.effect)) {
+                base.seals.push(material.effect);
+              }
+            }
+
+            // 素材の特殊攻撃タイプを印として移植（kamaitachi, dagger等）
+            if (material.attackType && material.attackType !== 'melee' && material.attackType !== base.attackType) {
+              const atkSeal = `attackType:${material.attackType}`;
+              if (base.seals.length < maxSeals && !base.seals.includes(atkSeal)) {
+                base.seals.push(atkSeal);
+              }
+            }
+
+            // 素材が既に持っている印も移植
             if (material.seals && material.seals.length > 0) {
-              base.seals = base.seals || [];
-              const maxSeals = base.maxSeals || 4;
               for (const seal of material.seals) {
                 if (base.seals.length < maxSeals && !base.seals.includes(seal)) {
                   base.seals.push(seal);
                 }
               }
             }
+
             // 特殊プロパティの移植（錆止め等）
             if (material.rustproof) base.rustproof = true;
           }
-          this.addMessage(`${getItemDisplayName(base)}に合成された！（強化値+${base.enhance}）`, 'important');
+
+          const newSeals = base.seals.length - sealsBefore;
+          let msg = `${getItemDisplayName(base)}に合成された！（強化値+${base.enhance}`;
+          if (newSeals > 0) msg += `、印${newSeals}個移植`;
+          msg += '）';
+          this.addMessage(msg, 'important');
           this.emitEffect('levelup', this.player.x, this.player.y);
           // 壺の中身をベースだけに
           pot.contents = [base];
