@@ -10,9 +10,14 @@ export class UI {
     this.floorDisplay = document.getElementById('floor-display');
     this.levelDisplay = document.getElementById('level-display');
     this.hpDisplay = document.getElementById('hp-display');
+    this.atkDisplay = document.getElementById('atk-display');
+    this.defDisplay = document.getElementById('def-display');
     this.strengthDisplay = document.getElementById('strength-display');
     this.fullnessDisplay = document.getElementById('fullness-display');
     this.goldDisplay = document.getElementById('gold-display');
+    this.equipWeaponDisplay = document.getElementById('equip-weapon-display');
+    this.equipShieldDisplay = document.getElementById('equip-shield-display');
+    this.equipRingDisplay = document.getElementById('equip-ring-display');
     this.messagesContainer = document.getElementById('messages');
 
     // メッセージログ
@@ -81,6 +86,30 @@ export class UI {
     // 銭
     if (this.goldDisplay) {
       this.goldDisplay.textContent = `銭: ${player.gold}`;
+    }
+
+    // 攻撃力・防御力
+    const dn = (it) => gameState?.getDisplayName ? gameState.getDisplayName(it) : getItemDisplayName(it);
+
+    if (this.atkDisplay) {
+      this.atkDisplay.textContent = `攻: ${player.getAttack()}`;
+    }
+    if (this.defDisplay) {
+      this.defDisplay.textContent = `防: ${player.getDefense()}`;
+    }
+
+    // 装備表示
+    if (this.equipWeaponDisplay) {
+      this.equipWeaponDisplay.textContent = player.weapon ? `武器: ${dn(player.weapon)}` : '武器: なし';
+    }
+    if (this.equipShieldDisplay) {
+      this.equipShieldDisplay.textContent = player.shield ? `盾: ${dn(player.shield)}` : '盾: なし';
+    }
+    if (this.equipRingDisplay) {
+      const rings = [];
+      if (player.ring1) rings.push(dn(player.ring1));
+      if (player.ring2) rings.push(dn(player.ring2));
+      this.equipRingDisplay.textContent = rings.length > 0 ? `腕輪: ${rings.join(' / ')}` : '腕輪: なし';
     }
   }
 

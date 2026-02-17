@@ -204,6 +204,20 @@ body {
   text-align: center;
 }
 
+.status-row.equip-row {
+  border-top: 1px solid #333;
+  padding-top: 3px;
+  margin-top: 2px;
+}
+
+.status-row.equip-row span {
+  font-size: 12px;
+  color: #aab;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 #hp-display {
   color: #66ff66;
 }
