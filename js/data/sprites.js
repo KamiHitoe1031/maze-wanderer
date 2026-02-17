@@ -239,7 +239,13 @@ export const SPRITE_DEFS = {
   'item.pot.synthesis_pot': { imagePath: 'assets/items/synthesis_pot.png', fallbackChar: '{', fallbackColor: '#FF8800' },
   'item.pot.heal_pot':      { imagePath: 'assets/items/heal_pot.png',      fallbackChar: '{', fallbackColor: '#44FF44' },
   'item.pot.warehouse_pot': { imagePath: 'assets/items/warehouse_pot.png', fallbackChar: '{', fallbackColor: '#AABB88' },
-  'item.pot.curse_pot':     { imagePath: 'assets/items/curse_pot.png',     fallbackChar: '{', fallbackColor: '#8844AA' },
+  'item.pot.curse_pot':       { imagePath: 'assets/items/curse_pot.png',       fallbackChar: '{', fallbackColor: '#8844AA' },
+  'item.pot.transform_pot':   { imagePath: 'assets/items/transform_pot.png',   fallbackChar: '{', fallbackColor: '#CC44CC' },
+  'item.pot.upgrade_pot':     { imagePath: 'assets/items/upgrade_pot.png',     fallbackChar: '{', fallbackColor: '#44CCFF' },
+  'item.pot.downgrade_pot':   { imagePath: 'assets/items/downgrade_pot.png',   fallbackChar: '{', fallbackColor: '#886644' },
+  'item.pot.evade_pot':       { imagePath: 'assets/items/evade_pot.png',       fallbackChar: '{', fallbackColor: '#AABB88' },
+  'item.pot.bottomless_pot':  { imagePath: 'assets/items/bottomless_pot.png',  fallbackChar: '{', fallbackColor: '#222222' },
+  'item.pot.unbreakable_pot': { imagePath: 'assets/items/unbreakable_pot.png', fallbackChar: '{', fallbackColor: '#DDDDFF' },
 
   // --- 矢（個別） ---
   'item.arrow.wood_arrow':      { imagePath: 'assets/items/wood_arrow.png',      fallbackChar: '-', fallbackColor: '#AA8855' },
