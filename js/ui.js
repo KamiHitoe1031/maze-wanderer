@@ -546,21 +546,27 @@ export class UI {
         }
         break;
 
-      case ITEM_CATEGORY.POT:
-        if (item.effect === 'storage' || item.effect === 'identify' ||
-            item.effect === 'synthesis' || item.effect === 'warehouse' ||
-            item.effect === 'curse') {
+      case ITEM_CATEGORY.POT: {
+        // アイテムを入れられる壺
+        const insertablePots = ['storage', 'identify', 'synthesis', 'warehouse',
+          'curse', 'transform', 'upgrade', 'downgrade', 'bottomless', 'unbreakable'];
+        if (insertablePots.includes(item.effect)) {
           if (item.contents.length < item.capacity) {
             actions.push({ action: 'pot_insert', label: '入れる' });
           }
-          if (item.effect === 'storage' && item.contents.length > 0) {
+          // 保存の壺・割れない壺は取り出し可能
+          if ((item.effect === 'storage' || item.effect === 'unbreakable') && item.contents.length > 0) {
             actions.push({ action: 'pot_extract', label: '出す' });
           }
         }
         if (item.effect === 'heal') {
           actions.push({ action: 'use', label: '割る' });
         }
+        if (item.effect === 'evade') {
+          actions.push({ action: 'use', label: '使う' });
+        }
         break;
+      }
 
       case ITEM_CATEGORY.ARROW:
         actions.push({ action: 'shoot', label: '撃つ' });

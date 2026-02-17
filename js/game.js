@@ -561,6 +561,9 @@ export class GameState {
 
     this.addMessage(`${this.floor}階に降りた。`, 'important');
 
+    // 強化の壺の効果: フロア移動時に中の武器/盾を+1
+    this.processUpgradePots();
+
     // モンスターハウスフラグをリセット
     this.monsterHouseTriggered = false;
 
@@ -809,6 +812,8 @@ export class GameState {
           messages = [`回復の壺を割った！HPが${healAmount}回復した！`];
           this.emitEffect('heal', this.player.x, this.player.y);
           removeFromInventory();
+        } else if (item.effect === 'evade') {
+          return this.useEvadePot(item);
         } else {
           this.addMessage('それは使えない。', 'info');
           return false;
@@ -963,6 +968,55 @@ export class GameState {
         this.addMessage(`${this.getDisplayName(targetItem)}は呪われてしまった...`, 'damage');
         break;
 
+      case 'transform': {
+        // 入れたアイテムを別のランダムアイテムに変化
+        const newItem = generateRandomItem(this.floor, this.rng);
+        if (newItem) {
+          pot.contents.push(newItem);
+          this.addMessage(`${this.getDisplayName(targetItem)}は${this.getDisplayName(newItem)}に変化した！`, 'important');
+        } else {
+          pot.contents.push(targetItem);
+          this.addMessage(`${this.getDisplayName(targetItem)}を入れたが何も起きなかった。`, 'info');
+        }
+        break;
+      }
+
+      case 'upgrade':
+        // 武器/盾なら中に保管。フロア移動時に強化値+1
+        if (targetItem.category === ITEM_CATEGORY.WEAPON || targetItem.category === ITEM_CATEGORY.SHIELD) {
+          pot.contents.push(targetItem);
+          this.addMessage(`${this.getDisplayName(targetItem)}を${this.getDisplayName(pot)}に入れた。フロア移動時に強化される。`, 'info');
+        } else {
+          pot.contents.push(targetItem);
+          this.addMessage(`${this.getDisplayName(targetItem)}を入れた。武器か盾でないと効果がない。`, 'info');
+        }
+        break;
+
+      case 'downgrade':
+        // 武器/盾なら強化値-3
+        if (targetItem.category === ITEM_CATEGORY.WEAPON || targetItem.category === ITEM_CATEGORY.SHIELD) {
+          targetItem.enhance = (targetItem.enhance || 0) - 3;
+          pot.contents.push(targetItem);
+          this.addMessage(`${this.getDisplayName(targetItem)}の強化値が3下がってしまった！`, 'damage');
+        } else {
+          pot.contents.push(targetItem);
+          this.addMessage(`${this.getDisplayName(targetItem)}を入れた。`, 'info');
+        }
+        break;
+
+      case 'bottomless':
+        // 入れたアイテムが消滅
+        this.addMessage(`${this.getDisplayName(targetItem)}は壺の底に吸い込まれ消えてしまった！`, 'damage');
+        // contents には追加しない（消滅）が、容量は消費する
+        pot.contents.push(null);
+        break;
+
+      case 'unbreakable':
+        // 割れない保存壺（出し入れ自由）
+        pot.contents.push(targetItem);
+        this.addMessage(`${this.getDisplayName(targetItem)}を${this.getDisplayName(pot)}に入れた。`, 'info');
+        break;
+
       default:
         pot.contents.push(targetItem);
         break;
@@ -989,6 +1043,39 @@ export class GameState {
     const extracted = pot.contents.pop();
     this.player.inventory.push(extracted);
     this.addMessage(`${this.getDisplayName(extracted)}を取り出した。`, 'info');
+    return true;
+  }
+
+  /**
+   * 強化の壺の効果をフロア移動時に処理
+   */
+  processUpgradePots() {
+    for (const item of this.player.inventory) {
+      if (item.category === ITEM_CATEGORY.POT && item.effect === 'upgrade') {
+        for (const content of item.contents) {
+          if (content && (content.category === ITEM_CATEGORY.WEAPON || content.category === ITEM_CATEGORY.SHIELD)) {
+            content.enhance = (content.enhance || 0) + 1;
+            this.addMessage(`${this.getDisplayName(content)}の強化値が1上がった！`, 'important');
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * やりすごしの壺を使用（壺に隠れる）
+   */
+  useEvadePot(item) {
+    if (!item || item.effect !== 'evade') return false;
+
+    this.player.statusEffects = this.player.statusEffects || [];
+    this.player.statusEffects.push({ type: 'evade', remaining: 20 });
+    this.addMessage('壺に隠れた！（20ターン）', 'important');
+
+    // 壺を消費
+    const idx = this.player.inventory.indexOf(item);
+    if (idx >= 0) this.player.inventory.splice(idx, 1);
+
     return true;
   }
 
