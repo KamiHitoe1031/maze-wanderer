@@ -10,6 +10,8 @@ export class SpriteManager {
     this.tileSize = tileSize;
     this.sprites = new Map();  // key -> { image, loaded } | null
     this.fallbacks = new Map(); // key -> { char, color, bgColor }
+    this.pendingLoads = 0;
+    this.onAllLoaded = null; // 全画像ロード完了時のコールバック
 
     // 全スプライト定義を登録
     this.registerAll();
@@ -37,10 +39,17 @@ export class SpriteManager {
 
     // imagePath があれば非同期で画像ロード試行
     if (imagePath) {
+      this.pendingLoads++;
       const img = new Image();
       img.src = imagePath;
-      img.onload = () => this.sprites.set(key, { image: img, loaded: true });
-      img.onerror = () => this.sprites.set(key, null); // 失敗→フォールバック維持
+      img.onload = () => {
+        this.sprites.set(key, { image: img, loaded: true });
+        this._onLoadComplete();
+      };
+      img.onerror = () => {
+        this.sprites.set(key, null); // 失敗→フォールバック維持
+        this._onLoadComplete();
+      };
     }
   }
 
@@ -89,6 +98,16 @@ export class SpriteManager {
     // その上に半透明の黒を重ねる
     ctx.fillStyle = `rgba(0, 0, 0, ${1 - dimFactor})`;
     ctx.fillRect(x, y, this.tileSize, this.tileSize);
+  }
+
+  /**
+   * 画像ロード完了カウント処理
+   */
+  _onLoadComplete() {
+    this.pendingLoads--;
+    if (this.pendingLoads <= 0 && this.onAllLoaded) {
+      this.onAllLoaded();
+    }
   }
 
   /**
