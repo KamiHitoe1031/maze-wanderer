@@ -126,19 +126,24 @@ export class UI {
         <h2>GAME OVER</h2>
         <p>冒険は${floor}階で終わった...</p>
         <p>総ターン数: ${turnCount}</p>
-        <button id="retry-button">リトライ</button>
+        <div class="overlay-buttons">
+          <button id="town-button">町に戻る</button>
+          <button id="retry-button">リトライ</button>
+        </div>
       </div>
     `;
 
     document.body.appendChild(overlay);
-
-    // スタイルを追加
     this.addOverlayStyles();
 
     return new Promise((resolve) => {
+      document.getElementById('town-button').addEventListener('click', () => {
+        overlay.remove();
+        resolve('town');
+      });
       document.getElementById('retry-button').addEventListener('click', () => {
         overlay.remove();
-        resolve(true);
+        resolve('retry');
       });
     });
   }
@@ -146,15 +151,18 @@ export class UI {
   /**
    * クリア画面を表示
    */
-  showVictory(turnCount) {
+  showVictory(turnCount, victoryMessage = '踏破おめでとう！') {
     const overlay = document.createElement('div');
     overlay.className = 'game-overlay victory';
     overlay.innerHTML = `
       <div class="game-overlay-content">
         <h2>CONGRATULATIONS!</h2>
-        <p>霧幻の塔を踏破した！</p>
+        <p>${victoryMessage}</p>
         <p>総ターン数: ${turnCount}</p>
-        <button id="restart-button">もう一度</button>
+        <div class="overlay-buttons">
+          <button id="town-button">町に戻る</button>
+          <button id="restart-button">もう一度挑戦</button>
+        </div>
       </div>
     `;
 
@@ -162,9 +170,13 @@ export class UI {
     this.addOverlayStyles();
 
     return new Promise((resolve) => {
+      document.getElementById('town-button').addEventListener('click', () => {
+        overlay.remove();
+        resolve('town');
+      });
       document.getElementById('restart-button').addEventListener('click', () => {
         overlay.remove();
-        resolve(true);
+        resolve('retry');
       });
     });
   }
@@ -215,8 +227,14 @@ export class UI {
         font-size: 16px;
       }
 
-      .game-overlay-content button {
+      .overlay-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
         margin-top: 16px;
+      }
+
+      .game-overlay-content button {
         padding: 12px 24px;
         font-size: 16px;
         background-color: #4a5568;
@@ -238,8 +256,8 @@ export class UI {
   /**
    * 開始メッセージを表示
    */
-  showStartMessage() {
-    this.addMessage('霧幻の塔に足を踏み入れた。', 'important');
+  showStartMessage(dungeonName = '霧幻の塔') {
+    this.addMessage(`${dungeonName}に足を踏み入れた。`, 'important');
     this.addMessage('操作: WASD/矢印で移動、Fで攻撃、Iで持ち物、Enterで拾う/階段', 'info');
   }
 
@@ -282,6 +300,8 @@ export class UI {
 
     if (this.inventoryMode === 'enhance_target') {
       header.textContent = '--- 強化する装備を選べ ---';
+    } else if (this.inventoryMode === 'pot_insert_target') {
+      header.textContent = '--- 壺に入れるものを選べ ---';
     } else {
       header.textContent = `--- 持ち物 (${player.inventory.length}/${player.maxInventory}) ---`;
     }
@@ -292,16 +312,31 @@ export class UI {
     equipInfo.className = 'equip-info';
     const weaponName = player.weapon ? getItemDisplayName(player.weapon) : 'なし';
     const shieldName = player.shield ? getItemDisplayName(player.shield) : 'なし';
+    const ring1Name = player.ring1 ? getItemDisplayName(player.ring1) : 'なし';
+    const ring2Name = player.ring2 ? getItemDisplayName(player.ring2) : 'なし';
     equipInfo.innerHTML = `<span>武器: ${weaponName}</span> <span>盾: ${shieldName}</span>`;
+    if (player.ring1 || player.ring2) {
+      equipInfo.innerHTML += `<br><span>腕輪: ${ring1Name} / ${ring2Name}</span>`;
+    }
     panel.appendChild(equipInfo);
 
     // アイテムリスト
     const list = document.createElement('div');
     list.className = 'inventory-list';
 
-    const itemsToShow = this.inventoryMode === 'enhance_target'
-      ? player.inventory.filter(it => it.category === ITEM_CATEGORY.WEAPON || it.category === ITEM_CATEGORY.SHIELD)
-      : player.inventory;
+    let itemsToShow;
+    if (this.inventoryMode === 'enhance_target') {
+      itemsToShow = player.inventory.filter(it => it.category === ITEM_CATEGORY.WEAPON || it.category === ITEM_CATEGORY.SHIELD);
+    } else if (this.inventoryMode === 'pot_insert_target') {
+      // 壺に入れられるもの（壺自身と装備中のアイテムは除く）
+      itemsToShow = player.inventory.filter(it =>
+        it !== this.pendingPotItem &&
+        it !== player.weapon && it !== player.shield &&
+        it !== player.ring1 && it !== player.ring2
+      );
+    } else {
+      itemsToShow = player.inventory;
+    }
 
     if (itemsToShow.length === 0) {
       const empty = document.createElement('div');
@@ -314,7 +349,8 @@ export class UI {
         row.className = 'inventory-item' + (i === this.selectedIndex ? ' selected' : '');
 
         // 装備中マーク
-        const isEquipped = item === player.weapon || item === player.shield;
+        const isEquipped = item === player.weapon || item === player.shield ||
+          item === player.ring1 || item === player.ring2;
 
         // アイテムアイコン画像
         const icon = document.createElement('img');
@@ -348,6 +384,8 @@ export class UI {
           this.selectedIndex = i;
           if (this.inventoryMode === 'enhance_target') {
             this.handleEnhanceTarget(player, itemsToShow[i], gameState);
+          } else if (this.inventoryMode === 'pot_insert_target') {
+            this.handlePotInsert(player, itemsToShow[i], gameState);
           } else {
             this.inventoryMode = 'action';
             this.renderInventory(player, gameState);
@@ -424,9 +462,10 @@ export class UI {
       return;
     }
 
-    if (this.inventoryMode === 'action') {
+    if (this.inventoryMode === 'action' || this.inventoryMode === 'pot_insert_target') {
       if (key === 'Escape' || key === 'Backspace') {
         this.inventoryMode = 'main';
+        this.pendingPotItem = null;
         this.renderInventory(player, gameState);
         return;
       }
@@ -443,6 +482,8 @@ export class UI {
 
       if (this.inventoryMode === 'enhance_target') {
         this.handleEnhanceTarget(player, itemsToShow[this.selectedIndex], gameState);
+      } else if (this.inventoryMode === 'pot_insert_target') {
+        this.handlePotInsert(player, itemsToShow[this.selectedIndex], gameState);
       } else if (this.inventoryMode === 'main') {
         this.inventoryMode = 'action';
         this.renderInventory(player, gameState);
@@ -484,6 +525,34 @@ export class UI {
       case ITEM_CATEGORY.FOOD:
         actions.push({ action: 'use', label: '食べる' });
         break;
+
+      case ITEM_CATEGORY.RING:
+        if (player.ring1 === item || player.ring2 === item) {
+          if (!item.cursed) actions.push({ action: 'unequip', label: '外す' });
+        } else {
+          actions.push({ action: 'equip', label: '装備する' });
+        }
+        break;
+
+      case ITEM_CATEGORY.POT:
+        if (item.effect === 'storage' || item.effect === 'identify' ||
+            item.effect === 'synthesis' || item.effect === 'warehouse' ||
+            item.effect === 'curse') {
+          if (item.contents.length < item.capacity) {
+            actions.push({ action: 'pot_insert', label: '入れる' });
+          }
+          if (item.effect === 'storage' && item.contents.length > 0) {
+            actions.push({ action: 'pot_extract', label: '出す' });
+          }
+        }
+        if (item.effect === 'heal') {
+          actions.push({ action: 'use', label: '割る' });
+        }
+        break;
+
+      case ITEM_CATEGORY.ARROW:
+        actions.push({ action: 'shoot', label: '撃つ' });
+        break;
     }
 
     actions.push({ action: 'drop', label: '置く' });
@@ -519,6 +588,22 @@ export class UI {
       case 'drop':
         this.closeInventory({ action: 'drop', item });
         break;
+
+      case 'pot_insert':
+        // 壺に入れるアイテムを選択するモードに入る
+        this.pendingPotItem = item;
+        this.inventoryMode = 'pot_insert_target';
+        this.selectedIndex = 0;
+        this.renderInventory(player, gameState);
+        return;
+
+      case 'pot_extract':
+        this.closeInventory({ action: 'pot_extract', item });
+        break;
+
+      case 'shoot':
+        this.closeInventory({ action: 'shoot', item });
+        break;
     }
   }
 
@@ -534,12 +619,24 @@ export class UI {
   }
 
   /**
+   * 壺にアイテムを入れる処理
+   */
+  handlePotInsert(player, targetItem, gameState) {
+    this.closeInventory({
+      action: 'pot_insert',
+      item: this.pendingPotItem,
+      targetItem
+    });
+  }
+
+  /**
    * インベントリを閉じる
    */
   closeInventory(result) {
     this.inventoryOpen = false;
     this.inventoryMode = 'main';
     this.pendingScrollItem = null;
+    this.pendingPotItem = null;
 
     if (this.inventoryOverlay) {
       this.inventoryOverlay.remove();
@@ -568,6 +665,9 @@ function getCategorySymbol(category) {
     case ITEM_CATEGORY.GRASS: return '"';
     case ITEM_CATEGORY.SCROLL: return '?';
     case ITEM_CATEGORY.FOOD: return '%';
+    case ITEM_CATEGORY.RING: return '=';
+    case ITEM_CATEGORY.POT: return '{';
+    case ITEM_CATEGORY.ARROW: return '-';
     case ITEM_CATEGORY.GOLD: return '$';
     default: return ' ';
   }

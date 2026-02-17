@@ -412,3 +412,262 @@ body {
   color: #666;
   margin-top: 4px;
 }
+
+/* 町画面 */
+#town-screen {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.town-container {
+  background-color: #16213e;
+  border: 2px solid #4a5568;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 700px;
+  width: 100%;
+  color: #e0e0e0;
+  font-family: 'MS Gothic', 'Courier New', monospace;
+}
+
+.town-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #4a5568;
+}
+
+.town-title {
+  font-size: 22px;
+  color: #ffcc00;
+}
+
+.town-gold {
+  font-size: 16px;
+  color: #ffd700;
+}
+
+.town-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.town-panel {
+  background-color: #0f0f23;
+  border: 1px solid #4a5568;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.town-panel-title {
+  color: #88aaff;
+  font-size: 15px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #333;
+}
+
+.dungeon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dungeon-button {
+  background-color: #1a2a4e;
+  border: 1px solid #4a5568;
+  border-radius: 6px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.dungeon-button:hover {
+  background-color: #2a3a6e;
+}
+
+.dungeon-button.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dungeon-button.locked:hover {
+  background-color: #1a2a4e;
+}
+
+.dungeon-button.cleared {
+  border-color: #66ff66;
+}
+
+.dungeon-name {
+  font-size: 15px;
+  color: #ffcc00;
+  margin-bottom: 4px;
+}
+
+.dungeon-button.locked .dungeon-name {
+  color: #888;
+}
+
+.dungeon-desc {
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 2px;
+}
+
+.dungeon-info {
+  font-size: 11px;
+  color: #666;
+}
+
+.warehouse-info {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.warehouse-grid {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.warehouse-empty {
+  color: #555;
+  font-size: 12px;
+  text-align: center;
+  padding: 16px;
+}
+
+.warehouse-item {
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 3px;
+  color: #c0c0c0;
+}
+
+.warehouse-item:hover {
+  background-color: #2a3a5e;
+}
+
+.warehouse-item.selected {
+  background-color: #3a4a6e;
+  color: #ffcc00;
+}
+
+.carry-info {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #88aaff;
+  text-align: right;
+}
+
+.town-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #4a5568;
+  text-align: center;
+}
+
+.clear-status {
+  font-size: 12px;
+  color: #66ff66;
+}
+
+/* --- ショップ --- */
+.shop-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.shop-tab {
+  flex: 1;
+  padding: 6px 12px;
+  background-color: #1a2a4e;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  color: #aaa;
+  font-size: 13px;
+  font-family: 'MS Gothic', 'Courier New', monospace;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.shop-tab:hover {
+  background-color: #2a3a6e;
+}
+
+.shop-tab.active {
+  background-color: #2a4a8e;
+  color: #ffcc00;
+  border-color: #88aaff;
+}
+
+.shop-content {
+  min-height: 60px;
+}
+
+.shop-grid {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.shop-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 3px;
+  color: #c0c0c0;
+  transition: background-color 0.1s;
+}
+
+.shop-item:hover {
+  background-color: #2a3a5e;
+}
+
+.shop-item.too-expensive {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.shop-item.too-expensive:hover {
+  background-color: transparent;
+}
+
+.shop-item-name {
+  flex: 1;
+}
+
+.shop-item-price {
+  color: #ffd700;
+  font-size: 12px;
+  margin-left: 12px;
+  white-space: nowrap;
+}
+
+.shop-item-price.sell-price {
+  color: #44dd88;
+}
+
+.shop-empty {
+  color: #555;
+  font-size: 12px;
+  text-align: center;
+  padding: 16px;
+}

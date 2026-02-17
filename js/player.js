@@ -55,6 +55,28 @@ export class Player {
   }
 
   /**
+   * 腕輪のボーナスを取得
+   */
+  getRingBonus(stat) {
+    let bonus = 0;
+    for (const ring of [this.ring1, this.ring2]) {
+      if (!ring) continue;
+      if (ring.effect === stat) {
+        bonus += ring.bonusAmount || 0;
+      }
+    }
+    return bonus;
+  }
+
+  /**
+   * 特定の腕輪効果を持っているか
+   */
+  hasRingEffect(effectName) {
+    return (this.ring1 && this.ring1.effect === effectName) ||
+           (this.ring2 && this.ring2.effect === effectName);
+  }
+
+  /**
    * 攻撃力を計算
    */
   getAttack() {
@@ -74,7 +96,10 @@ export class Player {
       weaponStr = this.weapon.baseAtk + (this.weapon.enhance || 0);
     }
 
-    return lvBonus + this.strength + weaponStr;
+    // 腕輪ボーナス（ちからの腕輪）
+    const ringStr = this.getRingBonus('strength');
+
+    return lvBonus + this.strength + weaponStr + ringStr;
   }
 
   /**
@@ -173,7 +198,11 @@ export class Player {
   naturalHeal() {
     if (this.fullness <= 0 || this.hp >= this.maxHp) return 0;
 
-    const healAmount = Math.max(1, Math.floor(this.maxHp / 150));
+    let healAmount = Math.max(1, Math.floor(this.maxHp / 150));
+    // 回復の腕輪で回復量2倍
+    if (this.hasRingEffect('recovery')) {
+      healAmount *= 2;
+    }
     return this.heal(healAmount);
   }
 

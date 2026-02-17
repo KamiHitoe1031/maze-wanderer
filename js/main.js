@@ -9,6 +9,10 @@ import { UI } from './ui.js';
 import { ITEM_CATEGORY } from './item.js';
 import { SoundManager, SOUND } from './sound-manager.js';
 import { Minimap } from './minimap.js';
+import { SceneManager, SCENE } from './scene-manager.js';
+import { getDungeonDef } from './data/dungeons.js';
+import { SaveManager } from './save.js';
+import { TownScene } from './town.js';
 
 class Game {
   constructor() {
@@ -23,13 +27,54 @@ class Game {
     this.isRunning = false;
     this.inventoryBusy = false;
     this.soundInitialized = false;
+
+    // セーブマネージャ
+    this.saveManager = new SaveManager();
+
+    // シーンマネージャ
+    this.sceneManager = new SceneManager();
+
+    // タウンシーン
+    this.townScene = new TownScene(this.sceneManager, this.saveManager);
+
+    this.setupScenes();
   }
 
   /**
-   * ゲームを初期化
+   * シーンを登録
    */
-  init() {
-    this.gameState = new GameState();
+  setupScenes() {
+    // ダンジョンシーン
+    this.sceneManager.register(SCENE.DUNGEON, {
+      enter: (data) => this.enterDungeon(data),
+      exit: () => this.exitDungeon(),
+      update: () => this.updateDungeon(),
+      render: () => this.renderDungeon()
+    });
+
+    // タウンシーン
+    this.sceneManager.register(SCENE.TOWN, {
+      enter: (data) => this.townScene.enter(data),
+      exit: () => this.townScene.exit(),
+      update: () => {},
+      render: () => {}
+    });
+  }
+
+  /**
+   * ダンジョンシーンに入る
+   */
+  enterDungeon(data = {}) {
+    const dungeonDef = data.dungeonId
+      ? getDungeonDef(data.dungeonId)
+      : getDungeonDef('dungeon_1');
+
+    this.ui.clearMessages();
+
+    this.gameState = new GameState(dungeonDef, {
+      carryItems: data.carryItems || [],
+      carryGold: data.carryGold || 0
+    });
 
     // メッセージコールバックを設定
     this.gameState.onMessage = ({ text, type }) => {
@@ -48,7 +93,7 @@ class Game {
 
     // 全画像ロード完了時に再描画
     this.renderer.spriteManager.onAllLoaded = () => {
-      this.render();
+      this.renderDungeon();
     };
 
     // 初期視界を更新
@@ -56,22 +101,36 @@ class Game {
 
     // UI更新
     this.ui.updateStatus(this.gameState);
-    this.ui.showStartMessage();
+    this.ui.showStartMessage(dungeonDef.name);
+
+    // ゲーム画面を表示
+    const gameContainer = document.getElementById('game-container');
+    const sidePanel = document.getElementById('side-panel');
+    if (gameContainer) gameContainer.style.display = '';
+    if (sidePanel) sidePanel.style.display = '';
 
     // デバッグコマンドをグローバルに公開
     window.debug = this.gameState.debug;
 
     this.isRunning = true;
     this.inventoryBusy = false;
-    this.render();
+    this.renderDungeon();
   }
 
   /**
-   * メインループ
+   * ダンジョンシーンを退出
    */
-  update() {
+  exitDungeon() {
+    this.isRunning = false;
+    this.gameState = null;
+  }
+
+  /**
+   * ダンジョンシーンの更新
+   */
+  updateDungeon() {
     if (!this.isRunning) return;
-    if (this.gameState.state !== GAME_STATE.PLAYING) return;
+    if (!this.gameState || this.gameState.state !== GAME_STATE.PLAYING) return;
     if (this.inventoryBusy) return;
 
     // 最初のユーザー操作でサウンドシステムを初期化
@@ -100,6 +159,12 @@ class Game {
         const turnConsumed = this.gameState.processPlayerAction(action, direction);
 
         if (turnConsumed) {
+          // 最高到達階を更新
+          this.saveManager.updateBestFloor(
+            this.gameState.dungeonDef.id,
+            this.gameState.floor
+          );
+
           // 視界を更新
           this.renderer.updateVisibility(this.gameState.player, this.gameState.dungeon);
         }
@@ -108,7 +173,7 @@ class Game {
         this.ui.updateStatus(this.gameState);
 
         // 描画
-        this.render();
+        this.renderDungeon();
       }
     }
   }
@@ -133,14 +198,15 @@ class Game {
       }
 
       this.ui.updateStatus(this.gameState);
-      this.render();
+      this.renderDungeon();
     }
   }
 
   /**
-   * 描画
+   * ダンジョンシーンの描画
    */
-  render() {
+  renderDungeon() {
+    if (!this.gameState) return;
     this.renderer.render(this.gameState);
     this.minimap.render(this.gameState);
   }
@@ -150,38 +216,51 @@ class Game {
    */
   async handleStateChange(state) {
     if (state === GAME_STATE.GAME_OVER) {
-      const retry = await this.ui.showGameOver(
+      const result = await this.ui.showGameOver(
         this.gameState.floor,
         this.gameState.turnCount
       );
-      if (retry) {
-        this.restart();
+
+      if (result === 'town') {
+        this.sceneManager.transition(SCENE.TOWN, { death: true });
+      } else {
+        // retry
+        const dungeonId = this.gameState?.dungeonDef?.id || 'dungeon_1';
+        this.sceneManager.transition(SCENE.DUNGEON, { dungeonId });
       }
     } else if (state === GAME_STATE.VICTORY) {
-      const restart = await this.ui.showVictory(this.gameState.turnCount);
-      if (restart) {
-        this.restart();
+      const dungeonDef = this.gameState.dungeonDef;
+      const result = await this.ui.showVictory(
+        this.gameState.turnCount,
+        dungeonDef.victoryMessage
+      );
+
+      // クリア記録
+      this.saveManager.markDungeonCleared(dungeonDef.id);
+
+      if (result === 'town') {
+        this.sceneManager.transition(SCENE.TOWN, {
+          victory: true,
+          returnItems: [...this.gameState.player.inventory],
+          returnGold: this.gameState.player.gold
+        });
+      } else {
+        // retry
+        this.sceneManager.transition(SCENE.DUNGEON, { dungeonId: dungeonDef.id });
       }
     }
-  }
-
-  /**
-   * ゲームを再開
-   */
-  restart() {
-    this.ui.clearMessages();
-    this.init();
   }
 
   /**
    * ゲームループ開始
    */
   start() {
-    this.init();
+    // 町からスタート
+    this.sceneManager.transition(SCENE.TOWN, {});
 
     // 入力イベントベースのループ
     const gameLoop = () => {
-      this.update();
+      this.sceneManager.update();
       requestAnimationFrame(gameLoop);
     };
 
