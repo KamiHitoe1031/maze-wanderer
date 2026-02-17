@@ -63,6 +63,7 @@ export class GameState {
     this.onMessage = null;
     this.onStateChange = null;
     this.onFloorChange = null;
+    this.onSound = null;
   }
 
   /**
@@ -70,6 +71,16 @@ export class GameState {
    */
   get monsters() {
     return this.monsterManager.monsters;
+  }
+
+  /**
+   * サウンドイベントを発火
+   * @param {string} soundKey - SOUND定数のキー
+   */
+  emitSound(soundKey) {
+    if (this.onSound) {
+      this.onSound(soundKey);
+    }
   }
 
   /**
@@ -140,6 +151,7 @@ export class GameState {
     if (monster) {
       const result = this.combat.playerAttack(this.player, monster);
       this.addMessage(result.message, result.hit ? 'damage' : 'info');
+      this.emitSound(result.hit ? 'slash' : 'miss');
 
       // 分裂チェック（攻撃が命中し、まだ生きている場合）
       if (result.hit && monster.isAlive) {
@@ -150,13 +162,20 @@ export class GameState {
       }
 
       if (result.killed) {
+        this.emitSound('monster_death');
+
         // 乗り移りチェック（亡霊武者・悪霊武者）
         const possessResult = this.monsterManager.handlePossessOnDeath(monster, this.player);
         if (possessResult) {
           this.addMessage(possessResult.message, 'important');
         }
 
+        const prevLevel = this.player.level;
         this.player.gainExp(result.exp);
+        if (this.player.level > prevLevel) {
+          this.emitSound('levelup');
+          this.addMessage(`レベルが${this.player.level}に上がった！`, 'important');
+        }
         this.monsterManager.removeDeadMonsters();
 
         // ドロップ判定（10%）
@@ -184,6 +203,7 @@ export class GameState {
 
     // 移動
     this.player.move(direction.dx, direction.dy);
+    this.emitSound('footstep');
 
     // 移動先にアイテムがあるか通知
     const itemOnFloor = this.floorItems.find(
@@ -214,13 +234,20 @@ export class GameState {
     }
 
     if (result.killed && target) {
+      this.emitSound('monster_death');
+
       // 乗り移りチェック
       const possessResult = this.monsterManager.handlePossessOnDeath(target, this.player);
       if (possessResult) {
         this.addMessage(possessResult.message, 'important');
       }
 
+      const prevLevel = this.player.level;
       this.player.gainExp(result.exp);
+      if (this.player.level > prevLevel) {
+        this.emitSound('levelup');
+        this.addMessage(`レベルが${this.player.level}に上がった！`, 'important');
+      }
       this.monsterManager.removeDeadMonsters();
     }
 
@@ -252,6 +279,7 @@ export class GameState {
         this.player.gold += item.amount;
         this.floorItems.splice(itemIndex, 1);
         this.addMessage(`${item.amount}銭を拾った！`, 'info');
+        this.emitSound('gold_pickup');
         return true;
       }
 
@@ -268,11 +296,13 @@ export class GameState {
       this.player.inventory.push(item);
       this.floorItems.splice(itemIndex, 1);
       this.addMessage(`${getItemDisplayName(item)}を拾った。`, 'info');
+      this.emitSound('item_pickup');
       return true;
     }
 
     // 階段チェック
     if (this.dungeon.map[py][px] === TILE.STAIRS) {
+      this.emitSound('stairs');
       this.descendStairs();
       return true;
     }
@@ -291,6 +321,7 @@ export class GameState {
       // クリア
       this.state = GAME_STATE.VICTORY;
       this.addMessage('霧幻の塔を踏破した！おめでとう！', 'important');
+      this.emitSound('levelup');
       if (this.onStateChange) {
         this.onStateChange(this.state);
       }
@@ -378,6 +409,7 @@ export class GameState {
       }
       this.player.weapon = item;
       this.addMessage(`${getItemDisplayName(item)}を装備した。`, 'info');
+      this.emitSound('equip');
       return true;
     }
 
@@ -388,6 +420,7 @@ export class GameState {
       }
       this.player.shield = item;
       this.addMessage(`${getItemDisplayName(item)}を装備した。`, 'info');
+      this.emitSound('equip');
       return true;
     }
 
@@ -406,12 +439,14 @@ export class GameState {
     if (this.player.weapon === item) {
       this.player.weapon = null;
       this.addMessage(`${getItemDisplayName(item)}を外した。`, 'info');
+      this.emitSound('unequip');
       return true;
     }
 
     if (this.player.shield === item) {
       this.player.shield = null;
       this.addMessage(`${getItemDisplayName(item)}を外した。`, 'info');
+      this.emitSound('unequip');
       return true;
     }
 
@@ -436,11 +471,13 @@ export class GameState {
       case ITEM_CATEGORY.GRASS:
         messages = applyGrassEffect(item, this.player, this);
         removeFromInventory();
+        this.emitSound('grass_use');
         break;
 
       case ITEM_CATEGORY.FOOD:
         messages = applyFoodEffect(item, this.player);
         removeFromInventory();
+        this.emitSound('food_eat');
         break;
 
       case ITEM_CATEGORY.SCROLL:
@@ -461,6 +498,7 @@ export class GameState {
             return false;
           }
         }
+        this.emitSound('scroll_use');
         break;
 
       default:
@@ -536,6 +574,9 @@ export class GameState {
       if (result.message) {
         this.addMessage(result.message, result.hit ? 'damage' : 'info');
       }
+      if (result.hit) {
+        this.emitSound('player_hit');
+      }
     }
 
     // プレイヤー死亡チェック（復活の種対応）
@@ -543,6 +584,7 @@ export class GameState {
     if (!this.player.isAlive) {
       this.state = GAME_STATE.GAME_OVER;
       this.addMessage('冒険は失敗に終わった...', 'important');
+      this.emitSound('player_death');
       if (this.onStateChange) {
         this.onStateChange(this.state);
       }

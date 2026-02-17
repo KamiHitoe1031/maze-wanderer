@@ -74,7 +74,7 @@ export const SPRITE_DEFS = {
   'monster.wyvern':      { imagePath: 'assets/monsters/wyvern.png',      fallbackChar: 'Y', fallbackColor: '#44AAFF' },
   'monster.demon_king':  { imagePath: 'assets/monsters/demon_king.png',  fallbackChar: 'M', fallbackColor: '#FF0000' },
 
-  // --- アイテム ---
+  // --- アイテム（カテゴリ共通） ---
   'item.weapon':              { imagePath: 'assets/items/weapon.png',       fallbackChar: ')', fallbackColor: '#CCCCCC' },
   'item.shield':              { imagePath: 'assets/items/shield.png',       fallbackChar: '[', fallbackColor: '#88AAFF' },
   'item.grass':               { imagePath: 'assets/items/grass.png',        fallbackChar: '"', fallbackColor: '#44DD44' },
@@ -86,13 +86,47 @@ export const SPRITE_DEFS = {
   'item.ring':                { imagePath: 'assets/items/ring.png',         fallbackChar: '=', fallbackColor: '#FFDD00' },
   'item.gold':                { imagePath: 'assets/items/gold.png',         fallbackChar: '$', fallbackColor: '#FFD700' },
 
+  // --- 武器（個別） ---
+  'item.weapon.wooden_stick':    { imagePath: 'assets/items/wooden_stick.png',    fallbackChar: ')', fallbackColor: '#AA8855' },
+  'item.weapon.copper_sword':    { imagePath: 'assets/items/copper_sword.png',    fallbackChar: ')', fallbackColor: '#CC8844' },
+  'item.weapon.iron_katana':     { imagePath: 'assets/items/iron_katana.png',     fallbackChar: ')', fallbackColor: '#CCCCCC' },
+  'item.weapon.steel_tachi':     { imagePath: 'assets/items/steel_tachi.png',     fallbackChar: ')', fallbackColor: '#DDDDEE' },
+  'item.weapon.spirit_sword':    { imagePath: 'assets/items/spirit_sword.png',    fallbackChar: ')', fallbackColor: '#AA66DD' },
+  'item.weapon.dragon_sword':    { imagePath: 'assets/items/dragon_sword.png',    fallbackChar: ')', fallbackColor: '#FF6644' },
+  'item.weapon.cyclops_sword':   { imagePath: 'assets/items/cyclops_sword.png',   fallbackChar: ')', fallbackColor: '#CCAA44' },
+  'item.weapon.drain_sword':     { imagePath: 'assets/items/drain_sword.png',     fallbackChar: ')', fallbackColor: '#8844AA' },
+  'item.weapon.pickaxe':         { imagePath: 'assets/items/pickaxe.png',         fallbackChar: ')', fallbackColor: '#888888' },
+  'item.weapon.kamaitachi':      { imagePath: 'assets/items/kamaitachi.png',      fallbackChar: ')', fallbackColor: '#44CC88' },
+  'item.weapon.legendary_sword': { imagePath: 'assets/items/legendary_sword.png', fallbackChar: ')', fallbackColor: '#FFD700' },
+
+  // --- 盾（個別） ---
+  'item.shield.wooden_shield':    { imagePath: 'assets/items/wooden_shield.png',    fallbackChar: '[', fallbackColor: '#AA8855' },
+  'item.shield.copper_shield':    { imagePath: 'assets/items/copper_shield.png',    fallbackChar: '[', fallbackColor: '#CC8844' },
+  'item.shield.iron_shield':      { imagePath: 'assets/items/iron_shield.png',      fallbackChar: '[', fallbackColor: '#CCCCCC' },
+  'item.shield.steel_shield':     { imagePath: 'assets/items/steel_shield.png',     fallbackChar: '[', fallbackColor: '#DDDDEE' },
+  'item.shield.evasion_shield':   { imagePath: 'assets/items/evasion_shield.png',   fallbackChar: '[', fallbackColor: '#6688CC' },
+  'item.shield.antidote_shield':  { imagePath: 'assets/items/antidote_shield.png',  fallbackChar: '[', fallbackColor: '#44AA66' },
+  'item.shield.rustproof_shield': { imagePath: 'assets/items/rustproof_shield.png', fallbackChar: '[', fallbackColor: '#AAAA88' },
+  'item.shield.blast_shield':     { imagePath: 'assets/items/blast_shield.png',     fallbackChar: '[', fallbackColor: '#CC4444' },
+  'item.shield.fullness_shield':  { imagePath: 'assets/items/fullness_shield.png',  fallbackChar: '[', fallbackColor: '#FFAA44' },
+  'item.shield.legendary_shield': { imagePath: 'assets/items/legendary_shield.png', fallbackChar: '[', fallbackColor: '#FFD700' },
+
   // --- 罠 ---
   'trap.default':     { imagePath: 'assets/tiles/trap.png',      fallbackChar: '^', fallbackColor: '#FF4444', fallbackBg: '#1A1815' },
 
   // --- エフェクト ---
-  'effect.attack':    { imagePath: 'assets/effects/attack.png',  fallbackChar: '*', fallbackColor: '#FFFFFF' },
-  'effect.magic':     { imagePath: 'assets/effects/magic.png',   fallbackChar: '*', fallbackColor: '#AA44FF' },
-  'effect.damage':    { imagePath: 'assets/effects/damage.png',  fallbackChar: '!', fallbackColor: '#FF4444' },
+  'effect.attack':      { imagePath: 'assets/effects/attack.png',      fallbackChar: '*', fallbackColor: '#FFFFFF' },
+  'effect.magic':       { imagePath: 'assets/effects/magic.png',       fallbackChar: '*', fallbackColor: '#AA44FF' },
+  'effect.damage':      { imagePath: 'assets/effects/damage.png',      fallbackChar: '!', fallbackColor: '#FF4444' },
+  'effect.slash':       { imagePath: 'assets/effects/slash.png',       fallbackChar: '/', fallbackColor: '#FFFFFF' },
+  'effect.blunt':       { imagePath: 'assets/effects/blunt.png',       fallbackChar: '*', fallbackColor: '#FFDD44' },
+  'effect.wind':        { imagePath: 'assets/effects/wind.png',        fallbackChar: '~', fallbackColor: '#44CC88' },
+  'effect.fire_breath': { imagePath: 'assets/effects/fire_breath.png', fallbackChar: '*', fallbackColor: '#FF4422' },
+  'effect.explosion':   { imagePath: 'assets/effects/explosion.png',   fallbackChar: '*', fallbackColor: '#FF8800' },
+  'effect.heal':        { imagePath: 'assets/effects/heal.png',        fallbackChar: '+', fallbackColor: '#44FF44' },
+  'effect.levelup':     { imagePath: 'assets/effects/levelup.png',     fallbackChar: '!', fallbackColor: '#FFD700' },
+  'effect.steal':       { imagePath: 'assets/effects/steal.png',       fallbackChar: '>', fallbackColor: '#FF88AA' },
+  'effect.bullet':      { imagePath: 'assets/effects/bullet.png',      fallbackChar: 'o', fallbackColor: '#CCCCCC' },
 
   // --- 不可視タイル（Fog of War） ---
   'tile.unexplored':  { imagePath: null, fallbackChar: ' ', fallbackColor: '#000000', fallbackBg: '#000000' },

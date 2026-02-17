@@ -24,7 +24,8 @@ export const ACTION = {
   PICKUP: 'pickup',
   DESCEND: 'descend',
   INVENTORY: 'inventory',
-  EXAMINE: 'examine'
+  EXAMINE: 'examine',
+  TOGGLE_MUTE: 'toggle_mute'
 };
 
 // キーマッピング
@@ -132,6 +133,14 @@ export class InputHandler {
     if (event.code === 'KeyX') {
       event.preventDefault();
       this.pendingAction = ACTION.EXAMINE;
+      this.pendingDirection = null;
+      return;
+    }
+
+    // Mでミュートトグル
+    if (event.code === 'KeyM') {
+      event.preventDefault();
+      this.pendingAction = ACTION.TOGGLE_MUTE;
       this.pendingDirection = null;
       return;
     }
