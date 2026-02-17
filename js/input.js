@@ -25,7 +25,8 @@ export const ACTION = {
   DESCEND: 'descend',
   INVENTORY: 'inventory',
   EXAMINE: 'examine',
-  TOGGLE_MUTE: 'toggle_mute'
+  TOGGLE_MUTE: 'toggle_mute',
+  DEBUG_REVIVE: 'debug_revive'
 };
 
 // キーマッピング
@@ -141,6 +142,14 @@ export class InputHandler {
     if (event.code === 'KeyM') {
       event.preventDefault();
       this.pendingAction = ACTION.TOGGLE_MUTE;
+      this.pendingDirection = null;
+      return;
+    }
+
+    // F9でデバッグ復活
+    if (event.code === 'F9') {
+      event.preventDefault();
+      this.pendingAction = ACTION.DEBUG_REVIVE;
       this.pendingDirection = null;
       return;
     }
