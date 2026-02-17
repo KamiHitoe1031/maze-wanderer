@@ -121,6 +121,27 @@ body {
   text-align: center;
 }
 
+.controls-link-section {
+  padding-top: 10px;
+  border-top: 1px solid #4a5568;
+}
+
+.guide-link {
+  display: block;
+  text-align: center;
+  background-color: #2a3a5e;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  padding: 8px;
+  color: #ffcc00;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.guide-link:hover {
+  background-color: #3a4a6e;
+}
+
 /* ステータスバー */
 #status-bar {
   width: 100%;
