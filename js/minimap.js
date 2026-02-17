@@ -1,5 +1,5 @@
 /**
- * minimap.js - ミニマップ描画
+ * minimap.js - ミニマップ描画（プレイヤー中心スクロール）
  */
 
 import { MAP_WIDTH, MAP_HEIGHT, TILE } from './dungeon.js';
@@ -19,35 +19,47 @@ const COLORS = {
   ITEM: '#4488ff',
 };
 
+// ビューポートサイズ（タイル数）
+const VIEW_W = 37;
+const VIEW_H = 28;
+
 export class Minimap {
   constructor(canvas) {
     this.canvas = canvas;
-    // ピクセルサイズ: マップ40x30をキャンバスに収める
-    // 各タイル = 約3.75px → 4px横, 4px縦でちょうど 160x120
     this.pixelSize = 4;
-    this.canvas.width = MAP_WIDTH * this.pixelSize;
-    this.canvas.height = MAP_HEIGHT * this.pixelSize;
+    this.canvas.width = VIEW_W * this.pixelSize;
+    this.canvas.height = VIEW_H * this.pixelSize;
     this.ctx = canvas.getContext('2d');
   }
 
   /**
-   * ミニマップを描画
+   * ミニマップを描画（プレイヤー中心）
    */
   render(gameState) {
     const { dungeon, player, monsters, floorItems } = gameState;
     const ctx = this.ctx;
     const ps = this.pixelSize;
 
-    // 全面クリア
+    // プレイヤーを中心にしたカメラオフセット
+    const camX = player.x - Math.floor(VIEW_W / 2);
+    const camY = player.y - Math.floor(VIEW_H / 2);
+
+    // 全面クリア（マップ外も未探索と同じ黒）
     ctx.fillStyle = COLORS.UNEXPLORED;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // マップタイル描画
-    for (let y = 0; y < MAP_HEIGHT; y++) {
-      for (let x = 0; x < MAP_WIDTH; x++) {
-        if (!dungeon.explored[y][x]) continue;
+    for (let vy = 0; vy < VIEW_H; vy++) {
+      for (let vx = 0; vx < VIEW_W; vx++) {
+        const mapX = camX + vx;
+        const mapY = camY + vy;
 
-        const tile = dungeon.map[y][x];
+        // マップ範囲外は黒のまま（端が分からない）
+        if (mapX < 0 || mapX >= MAP_WIDTH || mapY < 0 || mapY >= MAP_HEIGHT) continue;
+
+        if (!dungeon.explored[mapY][mapX]) continue;
+
+        const tile = dungeon.map[mapY][mapX];
         let color;
         switch (tile) {
           case TILE.WALL:     color = COLORS.WALL; break;
@@ -55,13 +67,13 @@ export class Minimap {
           case TILE.CORRIDOR: color = COLORS.CORRIDOR; break;
           case TILE.STAIRS:   color = COLORS.STAIRS; break;
           case TILE.WATER:    color = COLORS.WATER; break;
-          case TILE.TRAP:     color = COLORS.FLOOR; break; // 罠は床と同じ色で隠す
+          case TILE.TRAP:     color = COLORS.FLOOR; break;
           case TILE.SHOP:     color = COLORS.SHOP; break;
           default:            color = COLORS.UNEXPLORED; break;
         }
 
         ctx.fillStyle = color;
-        ctx.fillRect(x * ps, y * ps, ps, ps);
+        ctx.fillRect(vx * ps, vy * ps, ps, ps);
       }
     }
 
@@ -70,25 +82,28 @@ export class Minimap {
       ctx.fillStyle = COLORS.ITEM;
       for (const item of floorItems) {
         if (!dungeon.explored[item.y]?.[item.x]) continue;
-        ctx.fillRect(item.x * ps, item.y * ps, ps, ps);
+        const sx = (item.x - camX) * ps;
+        const sy = (item.y - camY) * ps;
+        if (sx < 0 || sx >= this.canvas.width || sy < 0 || sy >= this.canvas.height) continue;
+        ctx.fillRect(sx, sy, ps, ps);
       }
     }
 
-    // モンスター描画（探索済みの位置のみ）
+    // モンスター描画
     ctx.fillStyle = COLORS.MONSTER;
     for (const monster of monsters) {
       if (!monster.isAlive) continue;
       if (!dungeon.explored[monster.y]?.[monster.x]) continue;
-      ctx.fillRect(monster.x * ps, monster.y * ps, ps, ps);
+      const sx = (monster.x - camX) * ps;
+      const sy = (monster.y - camY) * ps;
+      if (sx < 0 || sx >= this.canvas.width || sy < 0 || sy >= this.canvas.height) continue;
+      ctx.fillRect(sx, sy, ps, ps);
     }
 
-    // プレイヤー描画（少し大きめで目立たせる）
+    // プレイヤー描画（常に中央、少し大きめ）
+    const px = Math.floor(VIEW_W / 2) * ps;
+    const py = Math.floor(VIEW_H / 2) * ps;
     ctx.fillStyle = COLORS.PLAYER;
-    ctx.fillRect(
-      player.x * ps - 1,
-      player.y * ps - 1,
-      ps + 2,
-      ps + 2
-    );
+    ctx.fillRect(px - 1, py - 1, ps + 2, ps + 2);
   }
 }

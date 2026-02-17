@@ -314,15 +314,35 @@ export class UI {
         row.className = 'inventory-item' + (i === this.selectedIndex ? ' selected' : '');
 
         // 装備中マーク
-        let prefix = '  ';
-        if (item === player.weapon || item === player.shield) {
-          prefix = 'E ';
+        const isEquipped = item === player.weapon || item === player.shield;
+
+        // アイテムアイコン画像
+        const icon = document.createElement('img');
+        icon.className = 'inventory-icon';
+        icon.src = getItemIconPath(item.spriteKey);
+        icon.alt = '';
+        icon.onerror = () => {
+          // 画像が読めなければフォールバック記号に差し替え
+          const fallback = document.createElement('span');
+          fallback.className = 'inventory-icon-fallback';
+          fallback.textContent = getCategorySymbol(item.category);
+          icon.replaceWith(fallback);
+        };
+        row.appendChild(icon);
+
+        // 装備中ラベル
+        if (isEquipped) {
+          const equipBadge = document.createElement('span');
+          equipBadge.className = 'equip-badge';
+          equipBadge.textContent = 'E';
+          row.appendChild(equipBadge);
         }
 
-        // カテゴリ記号
-        const catSymbol = getCategorySymbol(item.category);
-
-        row.textContent = `${prefix}${catSymbol} ${getItemDisplayName(item)}`;
+        // アイテム名テキスト
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'inventory-item-name';
+        nameSpan.textContent = getItemDisplayName(item);
+        row.appendChild(nameSpan);
         row.dataset.index = i;
         row.addEventListener('click', () => {
           this.selectedIndex = i;
@@ -551,4 +571,21 @@ function getCategorySymbol(category) {
     case ITEM_CATEGORY.GOLD: return '$';
     default: return ' ';
   }
+}
+
+/**
+ * spriteKeyからアイコン画像パスを取得
+ */
+function getItemIconPath(spriteKey) {
+  // spriteKey例: 'item.weapon.copper_sword' → 'assets/items/copper_sword.png'
+  // spriteKey例: 'item.grass' → 'assets/items/grass.png'
+  // spriteKey例: 'item.gold' → 'assets/items/gold.png'
+  const parts = spriteKey.split('.');
+  if (parts.length >= 3) {
+    return `assets/items/${parts.slice(2).join('_')}.png`;
+  }
+  if (parts.length === 2) {
+    return `assets/items/${parts[1]}.png`;
+  }
+  return '';
 }
