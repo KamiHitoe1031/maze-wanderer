@@ -3,6 +3,7 @@
  */
 
 const SAVE_KEY = 'maze_wanderer_save';
+const SUSPEND_KEY = 'maze_wanderer_suspend';
 const SAVE_VERSION = 1;
 
 const DEFAULT_SAVE = {
@@ -152,6 +153,194 @@ export class SaveManager {
   reset() {
     this.data = { ...DEFAULT_SAVE, clearedDungeons: [], warehouse: [], bestFloors: {} };
     this.save();
+  }
+
+  // ========== クラウド同期用 ==========
+
+  /**
+   * 永続セーブデータをプレーンオブジェクトとしてエクスポート
+   */
+  exportPermanentData() {
+    return JSON.parse(JSON.stringify(this.data));
+  }
+
+  /**
+   * サーバーの永続セーブデータをlocalStorageに反映
+   */
+  importPermanentData(serverData) {
+    if (!serverData) return;
+    this.data = {
+      ...DEFAULT_SAVE,
+      clearedDungeons: [],
+      warehouse: [],
+      bestFloors: {},
+      ...serverData
+    };
+    this.updateShopUnlockLevel();
+    this.save();
+  }
+
+  /**
+   * 中断セーブデータをオブジェクトとしてエクスポート
+   */
+  exportSuspendData() {
+    try {
+      const raw = localStorage.getItem(SUSPEND_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * サーバーの中断セーブデータをlocalStorageに書き込み
+   */
+  importSuspendData(suspendData) {
+    if (suspendData) {
+      try {
+        localStorage.setItem(SUSPEND_KEY, JSON.stringify(suspendData));
+      } catch (e) {
+        // localStorage容量不足等
+      }
+    }
+  }
+
+  // ========== 中断セーブ ==========
+
+  /**
+   * ダンジョン中断セーブ
+   */
+  saveSuspend(gameState) {
+    try {
+      const data = {
+        version: SAVE_VERSION,
+        timestamp: Date.now(),
+        dungeonDefId: gameState.dungeonDef.id,
+        seed: gameState.seed,
+        floor: gameState.floor,
+        maxFloor: gameState.maxFloor,
+        turnCount: gameState.turnCount,
+        monsterHouseTriggered: gameState.monsterHouseTriggered,
+        stats: { ...gameState.stats },
+        identifiedMap: JSON.parse(JSON.stringify(gameState.identifiedMap)),
+        fakeNameMap: JSON.parse(JSON.stringify(gameState.fakeNameMap)),
+        rngState: [...gameState.rng.state],
+        player: this._serializePlayer(gameState.player),
+        dungeon: this._serializeDungeon(gameState.dungeon),
+        monsters: gameState.monsterManager.getAliveMonsters().map(m => this._serializeMonster(m)),
+        floorItems: gameState.floorItems.map(it => this._serializeItem(it)),
+        traps: gameState.trapManager.traps.map(t => ({ ...t })),
+        messages: gameState.messages.slice(-10)
+      };
+      localStorage.setItem(SUSPEND_KEY, JSON.stringify(data));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * 中断セーブがあるか
+   */
+  hasSuspendData() {
+    return localStorage.getItem(SUSPEND_KEY) !== null;
+  }
+
+  /**
+   * 中断セーブデータを読み込む（読み込み後削除）
+   */
+  loadSuspend() {
+    try {
+      const raw = localStorage.getItem(SUSPEND_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (data.version !== SAVE_VERSION) return null;
+      // ロード成功したら削除（ローグライクの中断セーブは1回限り）
+      localStorage.removeItem(SUSPEND_KEY);
+      return data;
+    } catch (e) {
+      localStorage.removeItem(SUSPEND_KEY);
+      return null;
+    }
+  }
+
+  /**
+   * 中断セーブを削除
+   */
+  deleteSuspend() {
+    localStorage.removeItem(SUSPEND_KEY);
+  }
+
+  // ========== シリアライズ ==========
+
+  _serializePlayer(player) {
+    return {
+      x: player.x,
+      y: player.y,
+      level: player.level,
+      exp: player.exp,
+      hp: player.hp,
+      maxHp: player.maxHp,
+      strength: player.strength,
+      maxStrength: player.maxStrength,
+      fullness: player.fullness,
+      maxFullness: player.maxFullness,
+      gold: player.gold,
+      weapon: player.weapon ? this._serializeItem(player.weapon) : null,
+      shield: player.shield ? this._serializeItem(player.shield) : null,
+      ring1: player.ring1 ? this._serializeItem(player.ring1) : null,
+      ring2: player.ring2 ? this._serializeItem(player.ring2) : null,
+      inventory: player.inventory.map(it => this._serializeItem(it)),
+      direction: { ...player.direction },
+      isAlive: player.isAlive,
+      hasRevival: player.hasRevival,
+      statusEffects: player.statusEffects.map(e => ({ ...e }))
+    };
+  }
+
+  _serializeItem(item) {
+    if (!item) return null;
+    // プレーンオブジェクトにコピー（クラスメソッド除去）
+    const serialized = {};
+    for (const key of Object.keys(item)) {
+      if (key === 'contents' && Array.isArray(item.contents)) {
+        serialized.contents = item.contents.map(c => c ? this._serializeItem(c) : null);
+      } else {
+        serialized[key] = item[key];
+      }
+    }
+    return serialized;
+  }
+
+  _serializeDungeon(dungeon) {
+    return {
+      width: dungeon.width,
+      height: dungeon.height,
+      map: dungeon.map.map(row => [...row]),
+      rooms: dungeon.rooms.map(r => ({ x: r.x, y: r.y, width: r.width, height: r.height })),
+      stairsPos: { ...dungeon.stairsPos },
+      playerStartPos: { ...dungeon.playerStartPos },
+      explored: dungeon.explored.map(row => [...row]),
+      monsterHouseRoom: dungeon.monsterHouseRoom
+        ? { x: dungeon.monsterHouseRoom.x, y: dungeon.monsterHouseRoom.y, width: dungeon.monsterHouseRoom.width, height: dungeon.monsterHouseRoom.height }
+        : null
+    };
+  }
+
+  _serializeMonster(monster) {
+    return {
+      id: monster.id,
+      x: monster.x,
+      y: monster.y,
+      hp: monster.hp,
+      maxHp: monster.maxHp,
+      atk: monster.atk,
+      def: monster.def,
+      isAlive: monster.isAlive,
+      splitCount: monster.splitCount,
+      slowToggle: monster.slowToggle,
+      statusEffects: monster.statusEffects.map(e => ({ ...e }))
+    };
   }
 
   /**

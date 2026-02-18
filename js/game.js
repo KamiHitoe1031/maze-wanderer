@@ -5,7 +5,7 @@
 import { RNG, generateSeed } from './rng.js';
 import { Dungeon, TILE } from './dungeon.js';
 import { Player } from './player.js';
-import { MonsterManager } from './monster.js';
+import { MonsterManager, Monster } from './monster.js';
 import { Combat } from './combat.js';
 import { ACTION } from './input.js';
 import {
@@ -106,6 +106,133 @@ export class GameState {
     this.onFloorChange = null;
     this.onSound = null;
     this.onEffect = null;
+  }
+
+  /**
+   * 中断セーブデータからゲーム状態を復元
+   */
+  static restore(saveData) {
+    const dungeonDef = getDungeonDef(saveData.dungeonDefId);
+    const gs = new GameState(dungeonDef);
+
+    // 基本状態を上書き
+    gs.seed = saveData.seed;
+    gs.rng = new RNG(saveData.seed);
+    gs.rng.state = [...saveData.rngState];
+    gs.floor = saveData.floor;
+    gs.maxFloor = saveData.maxFloor;
+    gs.turnCount = saveData.turnCount;
+    gs.monsterHouseTriggered = saveData.monsterHouseTriggered;
+    gs.stats = { ...saveData.stats };
+    gs.identifiedMap = JSON.parse(JSON.stringify(saveData.identifiedMap));
+    gs.fakeNameMap = JSON.parse(JSON.stringify(saveData.fakeNameMap));
+    gs.messages = saveData.messages || [];
+
+    // ダンジョン復元
+    gs.dungeon = gs._restoreDungeon(saveData.dungeon);
+
+    // プレイヤー復元
+    gs.player = gs._restorePlayer(saveData.player);
+
+    // モンスター復元
+    gs.monsterManager = new MonsterManager();
+    gs.monsterManager.monsters = saveData.monsters.map(md => gs._restoreMonster(md)).filter(Boolean);
+
+    // フロアアイテム復元
+    gs.floorItems = saveData.floorItems.map(it => gs._restoreItem(it)).filter(Boolean);
+
+    // 罠復元
+    gs.trapManager = new TrapManager();
+    gs.trapManager.traps = saveData.traps.map(t => ({ ...t }));
+
+    // 戦闘システム
+    gs.combat = new Combat(gs.rng);
+
+    return gs;
+  }
+
+  _restoreDungeon(data) {
+    const dungeon = Object.create(Dungeon.prototype);
+    dungeon.width = data.width;
+    dungeon.height = data.height;
+    dungeon.map = data.map.map(row => [...row]);
+    dungeon.rooms = data.rooms.map(r => ({ ...r }));
+    dungeon.stairsPos = { ...data.stairsPos };
+    dungeon.playerStartPos = { ...data.playerStartPos };
+    dungeon.explored = data.explored.map(row => [...row]);
+    dungeon.monsterHouseRoom = data.monsterHouseRoom ? { ...data.monsterHouseRoom } : null;
+    return dungeon;
+  }
+
+  _restorePlayer(data) {
+    const player = new Player(data.x, data.y);
+    player.level = data.level;
+    player.exp = data.exp;
+    player.hp = data.hp;
+    player.maxHp = data.maxHp;
+    player.strength = data.strength;
+    player.maxStrength = data.maxStrength;
+    player.fullness = data.fullness;
+    player.maxFullness = data.maxFullness;
+    player.gold = data.gold;
+    player.direction = { ...data.direction };
+    player.isAlive = data.isAlive;
+    player.hasRevival = data.hasRevival;
+    player.statusEffects = data.statusEffects.map(e => ({ ...e }));
+
+    // 装備・インベントリ復元
+    player.inventory = data.inventory.map(it => this._restoreItem(it)).filter(Boolean);
+    player.weapon = data.weapon ? this._restoreItem(data.weapon) : null;
+    player.shield = data.shield ? this._restoreItem(data.shield) : null;
+    player.ring1 = data.ring1 ? this._restoreItem(data.ring1) : null;
+    player.ring2 = data.ring2 ? this._restoreItem(data.ring2) : null;
+
+    // 装備品がインベントリにも含まれるよう参照を一致させる
+    if (player.weapon) {
+      const idx = player.inventory.findIndex(it => it.uid === player.weapon.uid);
+      if (idx >= 0) player.weapon = player.inventory[idx];
+    }
+    if (player.shield) {
+      const idx = player.inventory.findIndex(it => it.uid === player.shield.uid);
+      if (idx >= 0) player.shield = player.inventory[idx];
+    }
+    if (player.ring1) {
+      const idx = player.inventory.findIndex(it => it.uid === player.ring1.uid);
+      if (idx >= 0) player.ring1 = player.inventory[idx];
+    }
+    if (player.ring2) {
+      const idx = player.inventory.findIndex(it => it.uid === player.ring2.uid);
+      if (idx >= 0) player.ring2 = player.inventory[idx];
+    }
+
+    return player;
+  }
+
+  _restoreItem(data) {
+    if (!data) return null;
+    const item = { ...data };
+    // 壺の中身を復元
+    if (item.contents && Array.isArray(item.contents)) {
+      item.contents = item.contents.map(c => c ? this._restoreItem(c) : null);
+    }
+    return item;
+  }
+
+  _restoreMonster(data) {
+    try {
+      const monster = new Monster(data.id, data.x, data.y);
+      monster.hp = data.hp;
+      monster.maxHp = data.maxHp;
+      monster.atk = data.atk;
+      monster.def = data.def;
+      monster.isAlive = data.isAlive;
+      monster.splitCount = data.splitCount || 0;
+      monster.slowToggle = data.slowToggle || false;
+      monster.statusEffects = data.statusEffects.map(e => ({ ...e }));
+      return monster;
+    } catch (e) {
+      return null;
+    }
   }
 
   /**

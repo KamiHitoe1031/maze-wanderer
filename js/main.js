@@ -13,6 +13,8 @@ import { SceneManager, SCENE } from './scene-manager.js';
 import { getDungeonDef } from './data/dungeons.js';
 import { SaveManager } from './save.js';
 import { TownScene } from './town.js';
+import { CloudSaveManager } from './cloud-save.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './data/config.js';
 
 class Game {
   constructor() {
@@ -30,6 +32,9 @@ class Game {
 
     // セーブマネージャ
     this.saveManager = new SaveManager();
+
+    // クラウドセーブマネージャ
+    this.cloudSave = new CloudSaveManager(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // シーンマネージャ
     this.sceneManager = new SceneManager();
@@ -81,9 +86,13 @@ class Game {
     if (townScreen) townScreen.style.display = 'none';
     if (gameWrapper) gameWrapper.style.display = 'none';
 
+    // 中断セーブがあるかチェック
+    const hasSuspend = this.saveManager.hasSuspendData();
+
     // つづきからボタンの有効/無効
     const continueBtn = document.getElementById('continue-btn');
-    const hasSaveData = this.saveManager.data.clearedDungeons.length > 0 ||
+    const hasSaveData = hasSuspend ||
+      this.saveManager.data.clearedDungeons.length > 0 ||
       this.saveManager.data.warehouse.length > 0 ||
       this.saveManager.data.gold > 0 ||
       Object.keys(this.saveManager.data.bestFloors).length > 0;
@@ -98,7 +107,15 @@ class Game {
       const freshNewBtn = newGameBtn.cloneNode(true);
       newGameBtn.parentNode.replaceChild(freshNewBtn, newGameBtn);
       freshNewBtn.addEventListener('click', () => {
-        this.sceneManager.transition(SCENE.TOWN, {});
+        // 中断セーブがある場合は警告
+        if (hasSuspend) {
+          if (confirm('中断セーブがあります。新しく始めると中断セーブは消えます。よろしいですか？')) {
+            this.saveManager.deleteSuspend();
+            this.sceneManager.transition(SCENE.TOWN, {});
+          }
+        } else {
+          this.sceneManager.transition(SCENE.TOWN, {});
+        }
       });
     }
 
@@ -107,11 +124,228 @@ class Game {
       continueBtn.parentNode.replaceChild(freshContinueBtn, continueBtn);
       freshContinueBtn.disabled = !hasSaveData;
       freshContinueBtn.addEventListener('click', () => {
-        if (hasSaveData) {
+        if (!hasSaveData) return;
+        // 中断セーブがあればダンジョン再開、なければ町へ
+        if (hasSuspend) {
+          this.sceneManager.transition(SCENE.DUNGEON, { resumeSuspend: true });
+        } else {
           this.sceneManager.transition(SCENE.TOWN, {});
         }
       });
     }
+
+    // アカウントセクションを描画
+    this._renderAccountSection();
+  }
+
+  /**
+   * アカウントセクションを描画
+   */
+  _renderAccountSection() {
+    const section = document.getElementById('account-section');
+    if (!section) return;
+
+    if (this.cloudSave.isLoggedIn) {
+      section.innerHTML = `
+        <div class="account-info">
+          <div class="account-user">
+            <span class="cloud-icon">&#9729;</span>
+            ログイン中: ${this.cloudSave.currentUserId}
+          </div>
+          <div class="account-actions">
+            <button class="login-btn" id="sync-btn">データ同期</button>
+            <button class="login-btn" id="logout-btn">ログアウト</button>
+          </div>
+          <div class="sync-status" id="sync-status"></div>
+        </div>
+      `;
+
+      document.getElementById('sync-btn').addEventListener('click', () => this._syncData());
+      document.getElementById('logout-btn').addEventListener('click', () => this._handleLogout());
+    } else {
+      section.innerHTML = `
+        <div class="login-form">
+          <div class="login-field">
+            <span class="login-label">ID</span>
+            <input type="text" class="login-input" id="login-id"
+                   placeholder="3〜20文字 英数字" maxlength="20" autocomplete="username">
+          </div>
+          <div class="login-field">
+            <span class="login-label">PW</span>
+            <input type="password" class="login-input" id="login-pw"
+                   placeholder="8文字以上" maxlength="72" autocomplete="current-password">
+          </div>
+          <div class="login-error" id="login-error"></div>
+          <div class="login-buttons">
+            <button class="login-btn" id="login-btn">ログイン</button>
+            <button class="login-btn" id="register-btn">新規登録</button>
+          </div>
+          <div class="login-note">
+            ※ログインでセーブデータをクラウドに保存できます<br>
+            ※パスワードは復旧できません。忘れないでください
+          </div>
+        </div>
+      `;
+
+      document.getElementById('login-btn').addEventListener('click', () => this._handleLogin());
+      document.getElementById('register-btn').addEventListener('click', () => this._handleRegister());
+
+      // Enterキーでログイン
+      const pwInput = document.getElementById('login-pw');
+      if (pwInput) {
+        pwInput.addEventListener('keydown', (e) => {
+          if (e.code === 'Enter') {
+            e.preventDefault();
+            this._handleLogin();
+          }
+        });
+      }
+    }
+  }
+
+  /**
+   * ログイン処理
+   */
+  async _handleLogin() {
+    const idInput = document.getElementById('login-id');
+    const pwInput = document.getElementById('login-pw');
+    const errorEl = document.getElementById('login-error');
+    if (!idInput || !pwInput) return;
+
+    const userId = idInput.value.trim();
+    const password = pwInput.value;
+
+    errorEl.textContent = '';
+    const result = await this.cloudSave.login(userId, password);
+
+    if (result.ok) {
+      // ログイン成功 → データ同期してUI更新
+      await this._syncData();
+      this._renderAccountSection();
+      this._refreshContinueButton();
+    } else {
+      errorEl.textContent = result.error;
+    }
+  }
+
+  /**
+   * 新規登録処理
+   */
+  async _handleRegister() {
+    const idInput = document.getElementById('login-id');
+    const pwInput = document.getElementById('login-pw');
+    const errorEl = document.getElementById('login-error');
+    if (!idInput || !pwInput) return;
+
+    const userId = idInput.value.trim();
+    const password = pwInput.value;
+
+    errorEl.textContent = '';
+    const result = await this.cloudSave.register(userId, password);
+
+    if (result.ok) {
+      // 登録成功 → ローカルデータをサーバーにpush
+      await this._pushToCloud();
+      this._renderAccountSection();
+    } else {
+      errorEl.textContent = result.error;
+    }
+  }
+
+  /**
+   * ログアウト処理
+   */
+  async _handleLogout() {
+    await this.cloudSave.logout();
+    this._renderAccountSection();
+  }
+
+  /**
+   * クラウドとデータ同期
+   */
+  async _syncData() {
+    const statusEl = document.getElementById('sync-status');
+    if (statusEl) statusEl.textContent = '同期中...';
+
+    const pullResult = await this.cloudSave.pullSave();
+
+    if (pullResult.ok && pullResult.data) {
+      const serverPerm = pullResult.data.permanent;
+      const serverSuspend = pullResult.data.suspend;
+      const localPerm = this.saveManager.exportPermanentData();
+
+      if (serverPerm && Object.keys(serverPerm).length > 0) {
+        // マージ: clearedDungeonsは和集合、bestFloorsは最大値
+        const merged = { ...localPerm };
+
+        // clearedDungeons: 和集合
+        const allCleared = new Set([
+          ...(localPerm.clearedDungeons || []),
+          ...(serverPerm.clearedDungeons || [])
+        ]);
+        merged.clearedDungeons = [...allCleared];
+
+        // bestFloors: 各ダンジョンの最大値
+        const allFloors = { ...(localPerm.bestFloors || {}), ...(serverPerm.bestFloors || {}) };
+        for (const key of Object.keys(serverPerm.bestFloors || {})) {
+          allFloors[key] = Math.max(allFloors[key] || 0, serverPerm.bestFloors[key] || 0);
+        }
+        for (const key of Object.keys(localPerm.bestFloors || {})) {
+          allFloors[key] = Math.max(allFloors[key] || 0, localPerm.bestFloors[key] || 0);
+        }
+        merged.bestFloors = allFloors;
+
+        // warehouse, gold: サーバー側を優先
+        if (serverPerm.warehouse && serverPerm.warehouse.length > 0) {
+          merged.warehouse = serverPerm.warehouse;
+        }
+        if (serverPerm.gold != null) {
+          merged.gold = Math.max(localPerm.gold || 0, serverPerm.gold || 0);
+        }
+
+        this.saveManager.importPermanentData(merged);
+      }
+
+      // 中断セーブ: サーバーにあってローカルになければ復元
+      if (serverSuspend && !this.saveManager.hasSuspendData()) {
+        this.saveManager.importSuspendData(serverSuspend);
+      }
+    }
+
+    // マージ結果をサーバーにpush
+    await this._pushToCloud();
+
+    if (statusEl) {
+      statusEl.textContent = '同期完了 ' + new Date().toLocaleTimeString();
+    }
+
+    // つづきからボタンの状態を更新
+    this._refreshContinueButton();
+  }
+
+  /**
+   * ローカルデータをクラウドにpush
+   */
+  async _pushToCloud() {
+    if (!this.cloudSave.isLoggedIn) return;
+    const perm = this.saveManager.exportPermanentData();
+    const suspend = this.saveManager.exportSuspendData();
+    await this.cloudSave.pushSave(perm, suspend);
+  }
+
+  /**
+   * つづきからボタンの有効/無効を更新
+   */
+  _refreshContinueButton() {
+    const continueBtn = document.getElementById('continue-btn');
+    if (!continueBtn) return;
+    const hasSuspend = this.saveManager.hasSuspendData();
+    const hasSaveData = hasSuspend ||
+      this.saveManager.data.clearedDungeons.length > 0 ||
+      this.saveManager.data.warehouse.length > 0 ||
+      this.saveManager.data.gold > 0 ||
+      Object.keys(this.saveManager.data.bestFloors).length > 0;
+    continueBtn.disabled = !hasSaveData;
   }
 
   /**
@@ -126,50 +360,71 @@ class Game {
    * ダンジョンシーンに入る
    */
   enterDungeon(data = {}) {
+    this.ui.clearMessages();
+
+    // 中断セーブからの再開
+    if (data.resumeSuspend) {
+      const saveData = this.saveManager.loadSuspend();
+      if (saveData) {
+        this.gameState = GameState.restore(saveData);
+        this._setupDungeonCallbacks();
+
+        // 保存されていたメッセージを復元
+        if (saveData.messages) {
+          for (const msg of saveData.messages) {
+            this.ui.addMessage(msg.text || msg, msg.type || 'normal');
+          }
+        }
+        this.ui.addMessage('冒険を再開した。', 'important');
+
+        this._showDungeonUI();
+        return;
+      }
+      // 中断セーブが読めなかった場合は通常開始にフォールバック
+    }
+
     const dungeonDef = data.dungeonId
       ? getDungeonDef(data.dungeonId)
       : getDungeonDef('dungeon_1');
-
-    this.ui.clearMessages();
 
     this.gameState = new GameState(dungeonDef, {
       carryItems: data.carryItems || [],
       carryGold: data.carryGold || 0
     });
 
-    // メッセージコールバックを設定
+    this._setupDungeonCallbacks();
+    this.ui.showStartMessage(dungeonDef.name);
+    this._showDungeonUI();
+  }
+
+  /**
+   * ダンジョン用コールバックを設定
+   */
+  _setupDungeonCallbacks() {
     this.gameState.onMessage = ({ text, type }) => {
       this.ui.addMessage(text, type);
     };
-
-    // 状態変更コールバック
     this.gameState.onStateChange = (state) => {
       this.handleStateChange(state);
     };
-
-    // サウンドコールバック
     this.gameState.onSound = (soundKey) => {
       this.sound.play(soundKey);
     };
-
-    // エフェクトコールバック
     this.gameState.onEffect = ({ effectKey, x, y }) => {
       this.renderer.drawAttackEffect(x, y, null, effectKey);
     };
-
-    // 全画像ロード完了時に再描画
     this.renderer.spriteManager.onAllLoaded = () => {
       this.renderDungeon();
     };
+  }
 
-    // 初期視界を更新
+  /**
+   * ダンジョンUI表示・初期描画
+   */
+  _showDungeonUI() {
     this.renderer.updateVisibility(this.gameState.player, this.gameState.dungeon);
-
-    // UI更新
     this.ui.updateStatus(this.gameState);
-    this.ui.showStartMessage(dungeonDef.name);
 
-    // ゲーム画面を表示
     const gameWrapper = document.getElementById('game-wrapper');
     const gameContainer = document.getElementById('game-container');
     const sidePanel = document.getElementById('side-panel');
@@ -177,9 +432,7 @@ class Game {
     if (gameContainer) gameContainer.style.display = '';
     if (sidePanel) sidePanel.style.display = '';
 
-    // デバッグコマンドをグローバルに公開
     window.debug = this.gameState.debug;
-
     this.isRunning = true;
     this.inventoryBusy = false;
     this.renderDungeon();
@@ -231,6 +484,11 @@ class Game {
     // 入力チェック
     if (this.input.hasAction()) {
       const { action, direction } = this.input.getAction();
+
+      if (action === ACTION.SUSPEND) {
+        this.suspendAndReturnToTitle();
+        return;
+      }
 
       if (action === ACTION.TOGGLE_MUTE) {
         const muted = this.sound.toggleMute();
@@ -305,6 +563,11 @@ class Game {
    */
   async handleStateChange(state) {
     if (state === GAME_STATE.GAME_OVER) {
+      // 死亡時は中断セーブを削除
+      this.saveManager.deleteSuspend();
+      // クラウド同期（fire-and-forget）
+      this._pushToCloud();
+
       const result = await this.ui.showGameOver(
         this.gameState.floor,
         this.gameState.turnCount,
@@ -319,6 +582,9 @@ class Game {
         this.sceneManager.transition(SCENE.DUNGEON, { dungeonId });
       }
     } else if (state === GAME_STATE.VICTORY) {
+      // クリア時は中断セーブを削除
+      this.saveManager.deleteSuspend();
+
       const dungeonDef = this.gameState.dungeonDef;
       const result = await this.ui.showVictory(
         this.gameState.turnCount,
@@ -328,6 +594,8 @@ class Game {
 
       // クリア記録
       this.saveManager.markDungeonCleared(dungeonDef.id);
+      // クラウド同期（fire-and-forget）
+      this._pushToCloud();
 
       if (result === 'town') {
         this.sceneManager.transition(SCENE.TOWN, {
@@ -339,6 +607,27 @@ class Game {
         // retry
         this.sceneManager.transition(SCENE.DUNGEON, { dungeonId: dungeonDef.id });
       }
+    }
+  }
+
+  /**
+   * 中断セーブしてタイトルに戻る
+   */
+  suspendAndReturnToTitle() {
+    if (!this.gameState) return;
+
+    const success = this.saveManager.saveSuspend(this.gameState);
+    if (success) {
+      this.ui.addMessage('中断セーブしました。', 'important');
+      // クラウド同期（fire-and-forget）
+      this._pushToCloud();
+      this.isRunning = false;
+      // 少し待ってからタイトルに遷移
+      setTimeout(() => {
+        this.sceneManager.transition(SCENE.TITLE, {});
+      }, 500);
+    } else {
+      this.ui.addMessage('中断セーブに失敗しました。', 'warning');
     }
   }
 
