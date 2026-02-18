@@ -311,6 +311,30 @@ export const SPRITE_DEFS = {
   'anim.bullet':      { sheetPath: 'assets/effects/bullet_sheet.png',      frames: 4, fallbackChar: 'o', fallbackColor: '#CCCCCC' },
   'anim.steal':       { sheetPath: 'assets/effects/steal_sheet.png',       frames: 4, fallbackChar: '>', fallbackColor: '#FF88AA' },
 
+  // --- ループアニメーション用スプライトシート（町タイル） ---
+  'anim.tile.town.tree':   { sheetPath: 'assets/tiles/town_tree_sheet.png',   frames: 4, fallbackChar: '♣', fallbackColor: '#228833' },
+  'anim.tile.town.water':  { sheetPath: 'assets/tiles/town_water_sheet.png',  frames: 4, fallbackChar: '~', fallbackColor: '#4499DD' },
+  'anim.tile.town.flower': { sheetPath: 'assets/tiles/town_flower_sheet.png', frames: 4, fallbackChar: '*', fallbackColor: '#FF88AA' },
+
+  // --- ループアニメーション用スプライトシート（キャラクターアイドル） ---
+  'anim.char.player.idle':           { sheetPath: 'assets/characters/player_idle_sheet.png',           frames: 4, fallbackChar: '@', fallbackColor: '#00FF88' },
+  'anim.char.warehouse_keeper.idle': { sheetPath: 'assets/characters/warehouse_keeper_idle_sheet.png', frames: 2, fallbackChar: 'W', fallbackColor: '#88AAFF' },
+  'anim.char.dungeon_guide.idle':    { sheetPath: 'assets/characters/dungeon_guide_idle_sheet.png',    frames: 2, fallbackChar: 'G', fallbackColor: '#FF8844' },
+
   // --- 不可視タイル（Fog of War） ---
   'tile.fog':         { imagePath: null, fallbackChar: ' ', fallbackColor: '#222222', fallbackBg: '#111111' },
+};
+
+// タイルスプライトキー → アニメーションシートキーのマッピング
+export const ANIMATED_TILE_MAP = {
+  'tile.town.tree':   'anim.tile.town.tree',
+  'tile.town.water':  'anim.tile.town.water',
+  'tile.town.flower': 'anim.tile.town.flower',
+};
+
+// キャラクタースプライトキー → アイドルアニメーションシートキーのマッピング
+export const ANIMATED_CHAR_MAP = {
+  'char.player':           'anim.char.player.idle',
+  'char.warehouse_keeper': 'anim.char.warehouse_keeper.idle',
+  'char.dungeon_guide':    'anim.char.dungeon_guide.idle',
 };

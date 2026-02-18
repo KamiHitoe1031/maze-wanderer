@@ -17,6 +17,9 @@ export class SpriteManager {
     // アクティブなアニメーション
     this.activeAnimations = []; // { key, x, y, frame, totalFrames, frameDuration, elapsed, onComplete }
 
+    // グローバルアニメーション時計（ループアニメーション用）
+    this.animTimestamp = 0;
+
     // 全スプライト定義を登録
     this.registerAll();
   }
@@ -187,6 +190,69 @@ export class SpriteManager {
    */
   hasActiveAnimations() {
     return this.activeAnimations.length > 0;
+  }
+
+  /**
+   * グローバルアニメーション時計を進める
+   * @param {number} deltaMs - 前フレームからの経過時間(ms)
+   */
+  tick(deltaMs) {
+    this.animTimestamp += deltaMs;
+  }
+
+  /**
+   * ループアニメーションを描画（グローバル時計ベース）
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {string} key - スプライトシートのキー
+   * @param {number} x - スクリーンX座標
+   * @param {number} y - スクリーンY座標
+   * @param {number} frameDuration - 1フレームの表示時間(ms)
+   */
+  drawLooping(ctx, key, x, y, frameDuration = 200) {
+    const sheet = this.sheets.get(key);
+    if (!sheet?.loaded) {
+      this.draw(ctx, key, x, y);
+      return;
+    }
+
+    const totalFrames = sheet.frames;
+    const frameIndex = Math.floor(this.animTimestamp / frameDuration) % totalFrames;
+    const sx = frameIndex * sheet.frameWidth;
+    ctx.drawImage(
+      sheet.image,
+      sx, 0, sheet.frameWidth, sheet.frameHeight,
+      x, y, this.tileSize, this.tileSize
+    );
+  }
+
+  /**
+   * 位置ベースオフセット付きループアニメーション描画
+   * 隣接タイルが微妙にずれて自然な揺れに
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {string} key - スプライトシートのキー
+   * @param {number} x - スクリーンX座標
+   * @param {number} y - スクリーンY座標
+   * @param {number} mapX - マップX座標（オフセット計算用）
+   * @param {number} mapY - マップY座標（オフセット計算用）
+   * @param {number} frameDuration - 1フレームの表示時間(ms)
+   */
+  drawLoopingOffset(ctx, key, x, y, mapX, mapY, frameDuration = 200) {
+    const sheet = this.sheets.get(key);
+    if (!sheet?.loaded) {
+      this.draw(ctx, key, x, y);
+      return;
+    }
+
+    const totalFrames = sheet.frames;
+    // 位置ベースのオフセットで隣接タイルをずらす
+    const offset = ((mapX * 7 + mapY * 13) % totalFrames);
+    const frameIndex = (Math.floor(this.animTimestamp / frameDuration) + offset) % totalFrames;
+    const sx = frameIndex * sheet.frameWidth;
+    ctx.drawImage(
+      sheet.image,
+      sx, 0, sheet.frameWidth, sheet.frameHeight,
+      x, y, this.tileSize, this.tileSize
+    );
   }
 
   /**

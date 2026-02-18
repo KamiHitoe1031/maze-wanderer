@@ -103,6 +103,11 @@ export class TownScene {
     // Escキーリスナー登録
     document.addEventListener('keydown', this._escHandler);
 
+    // アニメーションループ開始
+    this._lastAnimTime = performance.now();
+    this._animLoopActive = true;
+    this._startTownAnimLoop();
+
     // 初回描画
     this.render();
   }
@@ -111,9 +116,37 @@ export class TownScene {
    * 町シーンを退出
    */
   exit() {
+    this._animLoopActive = false;
     if (this.statusBar) this.statusBar.style.display = '';
     this._closeOverlay();
     document.removeEventListener('keydown', this._escHandler);
+  }
+
+  /**
+   * 町のアニメーションループ（木の揺れ、水の波紋、キャラアイドル等）
+   */
+  _startTownAnimLoop() {
+    this._lastRenderTime = performance.now();
+
+    const loop = (now) => {
+      if (!this._animLoopActive) return;
+
+      const delta = now - this._lastAnimTime;
+      this._lastAnimTime = now;
+
+      // SpriteManagerのグローバル時計を進める
+      this.renderer.spriteManager.tick(delta);
+
+      // ~15fps（66ms間隔）で再描画
+      const sinceDraw = now - this._lastRenderTime;
+      if (sinceDraw > 66) {
+        this._lastRenderTime = now;
+        this.render();
+      }
+
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
   }
 
   /**

@@ -4,6 +4,7 @@
  */
 
 import { SpriteManager } from './sprite-manager.js';
+import { ANIMATED_TILE_MAP, ANIMATED_CHAR_MAP } from './data/sprites.js';
 // dungeon.js依存を除去 — マップサイズはdungeon.width/heightで取得
 
 // 描画設定
@@ -99,9 +100,14 @@ export class Renderer {
           continue;
         }
 
-        // タイルを描画
+        // タイルを描画（アニメーション版があればそれを使用）
         const spriteKey = dungeon.getTileSpriteKey(mapX, mapY);
-        this.spriteManager.draw(this.ctx, spriteKey, screenX, screenY);
+        const animKey = ANIMATED_TILE_MAP[spriteKey];
+        if (animKey) {
+          this.spriteManager.drawLoopingOffset(this.ctx, animKey, screenX, screenY, mapX, mapY, 250);
+        } else {
+          this.spriteManager.draw(this.ctx, spriteKey, screenX, screenY);
+        }
       }
     }
   }
@@ -173,7 +179,13 @@ export class Renderer {
         continue;
       }
 
-      this.spriteManager.draw(this.ctx, monster.spriteKey, screenX, screenY);
+      // アイドルアニメーションがあればそれを使用
+      const charAnimKey = ANIMATED_CHAR_MAP[monster.spriteKey];
+      if (charAnimKey) {
+        this.spriteManager.drawLooping(this.ctx, charAnimKey, screenX, screenY, 300);
+      } else {
+        this.spriteManager.draw(this.ctx, monster.spriteKey, screenX, screenY);
+      }
     }
   }
 
@@ -184,7 +196,13 @@ export class Renderer {
     const screenX = (player.x - this.cameraX) * this.tileSize;
     const screenY = (player.y - this.cameraY) * this.tileSize;
 
-    this.spriteManager.draw(this.ctx, 'char.player', screenX, screenY);
+    // アイドルアニメーションがあればそれを使用
+    const playerAnimKey = ANIMATED_CHAR_MAP['char.player'];
+    if (playerAnimKey) {
+      this.spriteManager.drawLooping(this.ctx, playerAnimKey, screenX, screenY, 300);
+    } else {
+      this.spriteManager.draw(this.ctx, 'char.player', screenX, screenY);
+    }
   }
 
   /**
