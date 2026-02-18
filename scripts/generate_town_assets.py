@@ -221,7 +221,14 @@ def remove_magenta_bg(img, threshold=60):
 
 
 def resize_to_target(img, size=TARGET_SIZE):
-    """Resize image to target size using NEAREST for pixel art."""
+    """Center-crop to square, then resize to target size."""
+    w, h = img.size
+    # Gemini APIが縦長画像を返すことがあるため、まず正方形にクロップ
+    if w != h:
+        min_dim = min(w, h)
+        left = (w - min_dim) // 2
+        top = (h - min_dim) // 2
+        img = img.crop((left, top, left + min_dim, top + min_dim))
     return img.resize((size, size), Image.Resampling.NEAREST)
 
 
