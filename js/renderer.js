@@ -4,7 +4,7 @@
  */
 
 import { SpriteManager } from './sprite-manager.js';
-import { ANIMATED_TILE_MAP, ANIMATED_CHAR_MAP } from './data/sprites.js';
+import { ANIMATED_TILES, ANIMATED_CHARS } from './data/sprites.js';
 // dungeon.js依存を除去 — マップサイズはdungeon.width/heightで取得
 
 // 描画設定
@@ -100,11 +100,10 @@ export class Renderer {
           continue;
         }
 
-        // タイルを描画（アニメーション版があればそれを使用）
+        // タイルを描画（アニメーション対象なら揺れ効果付き）
         const spriteKey = dungeon.getTileSpriteKey(mapX, mapY);
-        const animKey = ANIMATED_TILE_MAP[spriteKey];
-        if (animKey) {
-          this.spriteManager.drawLoopingOffset(this.ctx, animKey, screenX, screenY, mapX, mapY, 250);
+        if (ANIMATED_TILES.has(spriteKey)) {
+          this.spriteManager.drawAnimatedTile(this.ctx, spriteKey, screenX, screenY, mapX, mapY);
         } else {
           this.spriteManager.draw(this.ctx, spriteKey, screenX, screenY);
         }
@@ -179,10 +178,9 @@ export class Renderer {
         continue;
       }
 
-      // アイドルアニメーションがあればそれを使用
-      const charAnimKey = ANIMATED_CHAR_MAP[monster.spriteKey];
-      if (charAnimKey) {
-        this.spriteManager.drawLooping(this.ctx, charAnimKey, screenX, screenY, 300);
+      // アイドルアニメーション対象なら呼吸モーション付き
+      if (ANIMATED_CHARS.has(monster.spriteKey)) {
+        this.spriteManager.drawCharIdle(this.ctx, monster.spriteKey, screenX, screenY);
       } else {
         this.spriteManager.draw(this.ctx, monster.spriteKey, screenX, screenY);
       }
@@ -196,10 +194,9 @@ export class Renderer {
     const screenX = (player.x - this.cameraX) * this.tileSize;
     const screenY = (player.y - this.cameraY) * this.tileSize;
 
-    // アイドルアニメーションがあればそれを使用
-    const playerAnimKey = ANIMATED_CHAR_MAP['char.player'];
-    if (playerAnimKey) {
-      this.spriteManager.drawLooping(this.ctx, playerAnimKey, screenX, screenY, 300);
+    // アイドルアニメーション（呼吸モーション）
+    if (ANIMATED_CHARS.has('char.player')) {
+      this.spriteManager.drawCharIdle(this.ctx, 'char.player', screenX, screenY);
     } else {
       this.spriteManager.draw(this.ctx, 'char.player', screenX, screenY);
     }

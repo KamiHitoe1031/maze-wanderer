@@ -201,58 +201,62 @@ export class SpriteManager {
   }
 
   /**
-   * ループアニメーションを描画（グローバル時計ベース）
-   * @param {CanvasRenderingContext2D} ctx
-   * @param {string} key - スプライトシートのキー
-   * @param {number} x - スクリーンX座標
-   * @param {number} y - スクリーンY座標
-   * @param {number} frameDuration - 1フレームの表示時間(ms)
+   * 静止画ベースのタイルアニメーション描画
+   * スプライトシートを使わず、静止画のソース矩形をずらして揺れ効果を出す
+   * @param {string} key - 静止画スプライトキー（例: 'tile.town.tree'）
+   * @param {number} mapX - マップX座標（位置オフセット用）
+   * @param {number} mapY - マップY座標（位置オフセット用）
    */
-  drawLooping(ctx, key, x, y, frameDuration = 200) {
-    const sheet = this.sheets.get(key);
-    if (!sheet?.loaded) {
+  drawAnimatedTile(ctx, key, x, y, mapX, mapY) {
+    const sprite = this.sprites.get(key);
+    if (!sprite?.loaded) {
       this.draw(ctx, key, x, y);
       return;
     }
 
-    const totalFrames = sheet.frames;
-    const frameIndex = Math.floor(this.animTimestamp / frameDuration) % totalFrames;
-    const sx = frameIndex * sheet.frameWidth;
+    const img = sprite.image;
+    const iw = img.naturalWidth;
+    const ih = img.naturalHeight;
+
+    // 4フレームの揺れアニメーション（位置ベースオフセット付き）
+    const offset = ((mapX * 7 + mapY * 13) % 4);
+    const frame = (Math.floor(this.animTimestamp / 250) + offset) % 4;
+
+    // フレームごとのソース矩形オフセット（1-2pxのずれ）
+    // 画像端からはみ出さないよう、読み取り領域を少し内側にする
+    const margin = 2; // 揺れの最大幅
+    const baseSize = iw - margin * 2; // 読み取りサイズ（44x44 for 48x48 images）
+    const offsets = [
+      { sx: margin,     sy: margin },     // center
+      { sx: margin + 1, sy: margin },     // right 1px
+      { sx: margin,     sy: margin + 1 }, // down 1px
+      { sx: margin - 1, sy: margin },     // left 1px
+    ];
+    const o = offsets[frame];
+
     ctx.drawImage(
-      sheet.image,
-      sx, 0, sheet.frameWidth, sheet.frameHeight,
+      img,
+      o.sx, o.sy, baseSize, baseSize,
       x, y, this.tileSize, this.tileSize
     );
   }
 
   /**
-   * 位置ベースオフセット付きループアニメーション描画
-   * 隣接タイルが微妙にずれて自然な揺れに
-   * @param {CanvasRenderingContext2D} ctx
-   * @param {string} key - スプライトシートのキー
-   * @param {number} x - スクリーンX座標
-   * @param {number} y - スクリーンY座標
-   * @param {number} mapX - マップX座標（オフセット計算用）
-   * @param {number} mapY - マップY座標（オフセット計算用）
-   * @param {number} frameDuration - 1フレームの表示時間(ms)
+   * キャラクターアイドルアニメーション描画
+   * 静止画を1px上下させて呼吸モーションを表現
    */
-  drawLoopingOffset(ctx, key, x, y, mapX, mapY, frameDuration = 200) {
-    const sheet = this.sheets.get(key);
-    if (!sheet?.loaded) {
+  drawCharIdle(ctx, key, x, y) {
+    const sprite = this.sprites.get(key);
+    if (!sprite?.loaded) {
       this.draw(ctx, key, x, y);
       return;
     }
 
-    const totalFrames = sheet.frames;
-    // 位置ベースのオフセットで隣接タイルをずらす
-    const offset = ((mapX * 7 + mapY * 13) % totalFrames);
-    const frameIndex = (Math.floor(this.animTimestamp / frameDuration) + offset) % totalFrames;
-    const sx = frameIndex * sheet.frameWidth;
-    ctx.drawImage(
-      sheet.image,
-      sx, 0, sheet.frameWidth, sheet.frameHeight,
-      x, y, this.tileSize, this.tileSize
-    );
+    // 4フレーム呼吸: 0=normal, 1=1px down, 2=1px down, 3=normal
+    const frame = Math.floor(this.animTimestamp / 300) % 4;
+    const dy = (frame === 1 || frame === 2) ? 1 : 0;
+
+    ctx.drawImage(sprite.image, x, y + dy, this.tileSize, this.tileSize);
   }
 
   /**
