@@ -24,9 +24,21 @@ export const SPRITE_DEFS = {
   'tile.ocean.corridor': { imagePath: 'assets/tiles/ocean_corridor.png', fallbackChar: '·', fallbackColor: '#4466AA', fallbackBg: '#101A28' },
   'tile.ocean.water':    { imagePath: 'assets/tiles/ocean_water.png',    fallbackChar: '~', fallbackColor: '#3399DD', fallbackBg: '#0A1533' },
 
+  // --- 町タイル ---
+  'tile.town.grass':  { imagePath: 'assets/tiles/town_grass.png',  fallbackChar: '.', fallbackColor: '#3A7A2A', fallbackBg: '#1A3A10' },
+  'tile.town.path':   { imagePath: 'assets/tiles/town_path.png',   fallbackChar: '·', fallbackColor: '#AA9977', fallbackBg: '#554433' },
+  'tile.town.water':  { imagePath: 'assets/tiles/town_water.png',  fallbackChar: '~', fallbackColor: '#4499DD', fallbackBg: '#112244' },
+  'tile.town.tree':   { imagePath: 'assets/tiles/town_tree.png',   fallbackChar: '♣', fallbackColor: '#228833', fallbackBg: '#1A3A10' },
+  'tile.town.wall':   { imagePath: 'assets/tiles/town_wall.png',   fallbackChar: '#', fallbackColor: '#887766', fallbackBg: '#443322' },
+  'tile.town.roof':   { imagePath: 'assets/tiles/town_roof.png',   fallbackChar: '▲', fallbackColor: '#AA5533', fallbackBg: '#663322' },
+  'tile.town.fence':  { imagePath: 'assets/tiles/town_fence.png',  fallbackChar: '=', fallbackColor: '#AA8855', fallbackBg: '#1A3A10' },
+  'tile.town.flower': { imagePath: 'assets/tiles/town_flower.png', fallbackChar: '*', fallbackColor: '#FF88AA', fallbackBg: '#1A3A10' },
+
   // --- キャラクター ---
-  'char.player':      { imagePath: 'assets/characters/player.png',    fallbackChar: '@', fallbackColor: '#00FF88', fallbackBg: null },
-  'char.shopkeeper':  { imagePath: 'assets/characters/shopkeeper.png', fallbackChar: 'S', fallbackColor: '#FFD700', fallbackBg: null },
+  'char.player':           { imagePath: 'assets/characters/player.png',           fallbackChar: '@', fallbackColor: '#00FF88', fallbackBg: null },
+  'char.shopkeeper':       { imagePath: 'assets/characters/shopkeeper.png',       fallbackChar: 'S', fallbackColor: '#FFD700', fallbackBg: null },
+  'char.warehouse_keeper': { imagePath: 'assets/characters/warehouse_keeper.png', fallbackChar: 'W', fallbackColor: '#88AAFF', fallbackBg: null },
+  'char.dungeon_guide':    { imagePath: 'assets/characters/dungeon_guide.png',    fallbackChar: 'G', fallbackColor: '#FF8844', fallbackBg: null },
 
   // --- ノーマル系モンスター ---
   'monster.green_slime':   { imagePath: 'assets/monsters/green_slime.png',   fallbackChar: 's', fallbackColor: '#44FF44' },

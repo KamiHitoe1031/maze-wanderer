@@ -40,7 +40,7 @@ class Game {
     this.sceneManager = new SceneManager();
 
     // タウンシーン
-    this.townScene = new TownScene(this.sceneManager, this.saveManager);
+    this.townScene = new TownScene(this.sceneManager, this.saveManager, this.renderer, this.input);
 
     this.setupScenes();
   }
@@ -69,8 +69,8 @@ class Game {
     this.sceneManager.register(SCENE.TOWN, {
       enter: (data) => this.townScene.enter(data),
       exit: () => this.townScene.exit(),
-      update: () => {},
-      render: () => {}
+      update: () => this.townScene.update(),
+      render: () => this.townScene.render()
     });
   }
 

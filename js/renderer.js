@@ -4,7 +4,7 @@
  */
 
 import { SpriteManager } from './sprite-manager.js';
-import { MAP_WIDTH, MAP_HEIGHT, TILE } from './dungeon.js';
+// dungeon.js依存を除去 — マップサイズはdungeon.width/heightで取得
 
 // 描画設定
 const TILE_SIZE = 24;
@@ -83,7 +83,7 @@ export class Renderer {
         const screenY = vy * this.tileSize;
 
         // マップ範囲外チェック
-        if (mapX < 0 || mapX >= MAP_WIDTH || mapY < 0 || mapY >= MAP_HEIGHT) {
+        if (mapX < 0 || mapX >= dungeon.width || mapY < 0 || mapY >= dungeon.height) {
           this.spriteManager.draw(this.ctx, 'tile.wall', screenX, screenY);
           continue;
         }
@@ -198,7 +198,7 @@ export class Renderer {
       // 部屋の周囲1マス（壁）も可視化
       for (let y = room.y - 1; y <= room.y + room.height; y++) {
         for (let x = room.x - 1; x <= room.x + room.width; x++) {
-          if (y >= 0 && y < MAP_HEIGHT && x >= 0 && x < MAP_WIDTH) {
+          if (y >= 0 && y < dungeon.height && x >= 0 && x < dungeon.width) {
             dungeon.explored[y][x] = true;
           }
         }
@@ -210,7 +210,7 @@ export class Renderer {
       for (let dx = -1; dx <= 1; dx++) {
         const nx = px + dx;
         const ny = py + dy;
-        if (nx >= 0 && nx < MAP_WIDTH && ny >= 0 && ny < MAP_HEIGHT) {
+        if (nx >= 0 && nx < dungeon.width && ny >= 0 && ny < dungeon.height) {
           dungeon.explored[ny][nx] = true;
         }
       }
