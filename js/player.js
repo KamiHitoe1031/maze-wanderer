@@ -52,6 +52,10 @@ export class Player {
 
     // 状態異常
     this.statusEffects = [];
+
+    // ちから低下デバフ（各要素: { turnsRemaining: number }）
+    // 10ターン経過で1ポイントずつ回復
+    this.strengthDebuffs = [];
   }
 
   /**
@@ -287,6 +291,36 @@ export class Player {
       effect.remaining--;
       return effect.remaining > 0;
     });
+  }
+
+  /**
+   * ちから低下デバフを追加（amount分下げ、各1ポイントずつ10ターン後に回復）
+   */
+  addStrengthDebuff(amount) {
+    for (let i = 0; i < amount; i++) {
+      this.strengthDebuffs.push({ turnsRemaining: 10 });
+    }
+    this.strength = Math.max(0, this.strength - amount);
+  }
+
+  /**
+   * ちからデバフのターン経過処理（毎ターン呼ぶ）
+   */
+  tickStrengthDebuffs() {
+    const recovered = [];
+    this.strengthDebuffs = this.strengthDebuffs.filter(debuff => {
+      debuff.turnsRemaining--;
+      if (debuff.turnsRemaining <= 0) {
+        recovered.push(debuff);
+        return false;
+      }
+      return true;
+    });
+    // 回復（maxStrengthを超えない）
+    if (recovered.length > 0) {
+      this.strength = Math.min(this.maxStrength, this.strength + recovered.length);
+    }
+    return recovered.length;
   }
 
   /**

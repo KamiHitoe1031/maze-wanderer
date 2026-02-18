@@ -665,6 +665,7 @@ export function applyScrollEffect(item, player, gameState) {
             gameState.dungeon.explored[y][x] = true;
           }
         }
+        gameState.clairvoyant = true;
       }
       messages.push('フロア全体が見渡せるようになった！');
       break;

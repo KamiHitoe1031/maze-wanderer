@@ -75,7 +75,7 @@ export class TrapManager {
     switch (trap.effect) {
       case 'poison_arrow':
         player.takeDamage(trap.damage);
-        player.strength = Math.max(0, player.strength - 1);
+        player.addStrengthDebuff(1);
         result.message = `毒矢の罠！${trap.damage}のダメージ、ちからが1下がった！`;
         result.type = 'damage';
         break;
@@ -201,7 +201,7 @@ export class TrapManager {
       case 'spore':
         player.statusEffects = player.statusEffects || [];
         player.statusEffects.push({ type: 'confusion', remaining: trap.duration });
-        player.strength = Math.max(0, player.strength - 1);
+        player.addStrengthDebuff(1);
         result.message = `胞子の罠！混乱し、ちからが1下がった！`;
         result.type = 'damage';
         break;

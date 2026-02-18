@@ -25,6 +25,7 @@ export const ACTION = {
   DESCEND: 'descend',
   INVENTORY: 'inventory',
   EXAMINE: 'examine',
+  FACE: 'face',
   TOGGLE_MUTE: 'toggle_mute',
   DEBUG_REVIVE: 'debug_revive',
   SUSPEND: 'suspend'
@@ -92,6 +93,10 @@ export class InputHandler {
         // 待機
         this.pendingAction = ACTION.WAIT;
         this.pendingDirection = null;
+      } else if (this.ctrlHeld) {
+        // Ctrl+方向: 向きのみ変更（ターン消費なし）
+        this.pendingAction = ACTION.FACE;
+        this.pendingDirection = direction;
       } else {
         this.pendingAction = ACTION.MOVE;
         this.pendingDirection = direction;

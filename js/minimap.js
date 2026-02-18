@@ -35,7 +35,7 @@ export class Minimap {
   /**
    * ミニマップを描画（プレイヤー中心）
    */
-  render(gameState) {
+  render(gameState, visibleMap = null, clairvoyant = false) {
     const { dungeon, player, monsters, floorItems } = gameState;
     const ctx = this.ctx;
     const ps = this.pixelSize;
@@ -89,11 +89,15 @@ export class Minimap {
       }
     }
 
-    // モンスター描画
+    // モンスター描画（見通し状態なら探索済みで表示、通常は現在可視範囲のみ）
     ctx.fillStyle = COLORS.MONSTER;
     for (const monster of monsters) {
       if (!monster.isAlive) continue;
-      if (!dungeon.explored[monster.y]?.[monster.x]) continue;
+      if (clairvoyant) {
+        if (!dungeon.explored[monster.y]?.[monster.x]) continue;
+      } else {
+        if (!visibleMap?.[monster.y]?.[monster.x]) continue;
+      }
       const sx = (monster.x - camX) * ps;
       const sy = (monster.y - camY) * ps;
       if (sx < 0 || sx >= this.canvas.width || sy < 0 || sy >= this.canvas.height) continue;

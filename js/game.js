@@ -97,6 +97,9 @@ export class GameState {
     // モンスターハウス検知
     this.monsterHouseTriggered = false;
 
+    // 見通し状態（見通しの巻物で有効化、フロア移動でリセット）
+    this.clairvoyant = false;
+
     // 統計情報
     this.stats = { monstersKilled: 0, itemsCollected: 0, maxFloor: 1 };
 
@@ -123,6 +126,7 @@ export class GameState {
     gs.maxFloor = saveData.maxFloor;
     gs.turnCount = saveData.turnCount;
     gs.monsterHouseTriggered = saveData.monsterHouseTriggered;
+    gs.clairvoyant = saveData.clairvoyant || false;
     gs.stats = { ...saveData.stats };
     gs.identifiedMap = JSON.parse(JSON.stringify(saveData.identifiedMap));
     gs.fakeNameMap = JSON.parse(JSON.stringify(saveData.fakeNameMap));
@@ -161,6 +165,7 @@ export class GameState {
     dungeon.playerStartPos = { ...data.playerStartPos };
     dungeon.explored = data.explored.map(row => [...row]);
     dungeon.monsterHouseRoom = data.monsterHouseRoom ? { ...data.monsterHouseRoom } : null;
+    dungeon.theme = data.theme || 'stone';
     return dungeon;
   }
 
@@ -179,6 +184,7 @@ export class GameState {
     player.isAlive = data.isAlive;
     player.hasRevival = data.hasRevival;
     player.statusEffects = data.statusEffects.map(e => ({ ...e }));
+    player.strengthDebuffs = (data.strengthDebuffs || []).map(d => ({ ...d }));
 
     // 装備・インベントリ復元
     player.inventory = data.inventory.map(it => this._restoreItem(it)).filter(Boolean);
@@ -413,6 +419,12 @@ export class GameState {
 
       case ACTION.PICKUP:
         turnConsumed = this.handlePickup();
+        break;
+
+      case ACTION.FACE:
+        if (direction) {
+          this.player.direction = direction;
+        }
         break;
 
       case ACTION.EXAMINE:
@@ -693,6 +705,8 @@ export class GameState {
 
     // モンスターハウスフラグをリセット
     this.monsterHouseTriggered = false;
+    // 見通し状態をリセット
+    this.clairvoyant = false;
 
     // 新しいフロアを生成
     this.dungeon = new Dungeon(this.floor, this.rng, this.dungeonDef.theme).generate();
@@ -1527,6 +1541,12 @@ export class GameState {
 
     // 状態異常ターン経過
     this.player.tickStatusEffects();
+
+    // ちからデバフ回復チェック
+    const strRecovered = this.player.tickStrengthDebuffs();
+    if (strRecovered > 0) {
+      this.addMessage(`ちからが${strRecovered}回復した！`, 'heal');
+    }
 
     // モンスター状態異常ターン経過
     for (const monster of this.monsters) {

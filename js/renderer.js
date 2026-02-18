@@ -29,6 +29,11 @@ export class Renderer {
     // カメラオフセット
     this.cameraX = 0;
     this.cameraY = 0;
+
+    // 現在の可視範囲（毎ターン再計算、モンスター表示判定に使用）
+    this.visible = null;
+    // 見通し状態（見通しの巻物/腕輪で全モンスター可視）
+    this.clairvoyant = false;
   }
 
   /**
@@ -146,14 +151,18 @@ export class Renderer {
   }
 
   /**
-   * モンスターを描画
+   * モンスターを描画（現在の可視範囲内のみ）
    */
   renderMonsters(monsters, dungeon) {
     for (const monster of monsters) {
       if (!monster.isAlive) continue;
 
-      // 探索済みでなければ表示しない
-      if (!dungeon.explored[monster.y]?.[monster.x]) continue;
+      // 見通し状態なら探索済みで表示、通常は現在可視範囲内のみ
+      if (this.clairvoyant) {
+        if (!dungeon.explored[monster.y]?.[monster.x]) continue;
+      } else {
+        if (!this.visible?.[monster.y]?.[monster.x]) continue;
+      }
 
       const screenX = (monster.x - this.cameraX) * this.tileSize;
       const screenY = (monster.y - this.cameraY) * this.tileSize;
@@ -180,10 +189,23 @@ export class Renderer {
 
   /**
    * 視界を更新（部屋内は全体、通路は周囲1マス）
+   * explored: 永続的な探索済みフラグ（タイル・アイテム表示用）
+   * visible: 現在の可視範囲（モンスター表示用、毎回リセット）
    */
   updateVisibility(player, dungeon) {
     const px = player.x;
     const py = player.y;
+
+    // visible配列を毎回リセット
+    if (!this.visible || this.visible.length !== dungeon.height) {
+      this.visible = Array.from({ length: dungeon.height }, () =>
+        new Array(dungeon.width).fill(false)
+      );
+    } else {
+      for (let y = 0; y < dungeon.height; y++) {
+        this.visible[y].fill(false);
+      }
+    }
 
     // プレイヤーが部屋にいるか
     const room = dungeon.getRoomAt(px, py);
@@ -193,6 +215,7 @@ export class Renderer {
       for (let y = room.y; y < room.y + room.height; y++) {
         for (let x = room.x; x < room.x + room.width; x++) {
           dungeon.explored[y][x] = true;
+          this.visible[y][x] = true;
         }
       }
       // 部屋の周囲1マス（壁）も可視化
@@ -200,6 +223,7 @@ export class Renderer {
         for (let x = room.x - 1; x <= room.x + room.width; x++) {
           if (y >= 0 && y < dungeon.height && x >= 0 && x < dungeon.width) {
             dungeon.explored[y][x] = true;
+            this.visible[y][x] = true;
           }
         }
       }
@@ -212,9 +236,14 @@ export class Renderer {
         const ny = py + dy;
         if (nx >= 0 && nx < dungeon.width && ny >= 0 && ny < dungeon.height) {
           dungeon.explored[ny][nx] = true;
+          this.visible[ny][nx] = true;
         }
       }
     }
+
+    // 見通し状態チェック（腕輪 or 見通しの巻物）
+    const ringClairvoyance = player.hasRingEffect && player.hasRingEffect('clairvoyance');
+    this.clairvoyant = ringClairvoyance || this._externalClairvoyant || false;
   }
 
   /**

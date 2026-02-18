@@ -675,7 +675,7 @@ export class MonsterManager {
           damage: 0
         });
       } else if (player.strength > 1) {
-        player.strength -= 1;
+        player.addStrengthDebuff(1);
         results.push({
           hit: true,
           message: `${monster.name}の攻撃でちからが1下がった！`,
@@ -693,7 +693,7 @@ export class MonsterManager {
       } else {
         const drain = Math.min(2, player.strength - 1);
         if (drain > 0) {
-          player.strength -= drain;
+          player.addStrengthDebuff(drain);
           results.push({
             hit: true,
             message: `${monster.name}の攻撃でちからが${drain}下がった！`,

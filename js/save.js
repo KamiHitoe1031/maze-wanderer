@@ -221,6 +221,7 @@ export class SaveManager {
         maxFloor: gameState.maxFloor,
         turnCount: gameState.turnCount,
         monsterHouseTriggered: gameState.monsterHouseTriggered,
+        clairvoyant: gameState.clairvoyant || false,
         stats: { ...gameState.stats },
         identifiedMap: JSON.parse(JSON.stringify(gameState.identifiedMap)),
         fakeNameMap: JSON.parse(JSON.stringify(gameState.fakeNameMap)),
@@ -294,7 +295,8 @@ export class SaveManager {
       direction: { ...player.direction },
       isAlive: player.isAlive,
       hasRevival: player.hasRevival,
-      statusEffects: player.statusEffects.map(e => ({ ...e }))
+      statusEffects: player.statusEffects.map(e => ({ ...e })),
+      strengthDebuffs: (player.strengthDebuffs || []).map(d => ({ ...d }))
     };
   }
 
@@ -316,6 +318,7 @@ export class SaveManager {
     return {
       width: dungeon.width,
       height: dungeon.height,
+      theme: dungeon.theme || 'stone',
       map: dungeon.map.map(row => [...row]),
       rooms: dungeon.rooms.map(r => ({ x: r.x, y: r.y, width: r.width, height: r.height })),
       stairsPos: { ...dungeon.stairsPos },

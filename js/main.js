@@ -422,6 +422,7 @@ class Game {
    * ダンジョンUI表示・初期描画
    */
   _showDungeonUI() {
+    this.renderer._externalClairvoyant = this.gameState.clairvoyant || false;
     this.renderer.updateVisibility(this.gameState.player, this.gameState.dungeon);
     this.ui.updateStatus(this.gameState);
 
@@ -513,6 +514,7 @@ class Game {
           );
 
           // 視界を更新
+          this.renderer._externalClairvoyant = this.gameState.clairvoyant || false;
           this.renderer.updateVisibility(this.gameState.player, this.gameState.dungeon);
         }
 
@@ -541,6 +543,7 @@ class Game {
 
       if (turnConsumed) {
         this.gameState.processTurn();
+        this.renderer._externalClairvoyant = this.gameState.clairvoyant || false;
         this.renderer.updateVisibility(this.gameState.player, this.gameState.dungeon);
       }
 
@@ -555,7 +558,7 @@ class Game {
   renderDungeon() {
     if (!this.gameState) return;
     this.renderer.render(this.gameState);
-    this.minimap.render(this.gameState);
+    this.minimap.render(this.gameState, this.renderer.visible, this.renderer.clairvoyant);
   }
 
   /**
