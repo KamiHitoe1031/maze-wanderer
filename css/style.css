@@ -389,6 +389,16 @@ body {
   text-overflow: ellipsis;
 }
 
+.inventory-item-name.unidentified {
+  color: #aa99cc;
+  font-style: italic;
+}
+
+.inventory-item-name.unidentified::after {
+  content: ' ?';
+  color: #cc88ee;
+}
+
 .inventory-item:hover {
   background-color: #2a3a5e;
 }

@@ -418,7 +418,11 @@ export class UI {
         // アイテム名テキスト
         const nameSpan = document.createElement('span');
         nameSpan.className = 'inventory-item-name';
+        const isUnidentified = gameState?.isIdentified && !gameState.isIdentified(item);
         nameSpan.textContent = gameState?.getDisplayName ? gameState.getDisplayName(item) : getItemDisplayName(item);
+        if (isUnidentified) {
+          nameSpan.classList.add('unidentified');
+        }
         row.appendChild(nameSpan);
         row.dataset.index = i;
         row.addEventListener('click', () => {
