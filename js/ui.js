@@ -439,10 +439,30 @@ export class UI {
 
     // アクションメニュー（アイテム選択後）
     if (this.inventoryMode === 'action' && itemsToShow.length > 0) {
+      const item = itemsToShow[this.selectedIndex];
+
+      // アイテム説明文（識別済みなら効果を表示、未識別なら「???」）
+      const descBox = document.createElement('div');
+      descBox.className = 'inventory-desc';
+      const identified = gameState?.isIdentified ? gameState.isIdentified(item) : true;
+      if (!identified) {
+        descBox.textContent = '（まだ識別されていない）';
+      } else {
+        const parts = [];
+        // 武器・盾のステータス
+        if (item.category === ITEM_CATEGORY.WEAPON) {
+          parts.push(`基礎攻撃力:${item.baseAtk}  印スロット:${item.slots}`);
+        } else if (item.category === ITEM_CATEGORY.SHIELD) {
+          parts.push(`基礎防御力:${item.baseDef}  印スロット:${item.slots}`);
+        }
+        if (item.description) parts.push(item.description);
+        descBox.textContent = parts.join('  ');
+      }
+      panel.appendChild(descBox);
+
       const actionMenu = document.createElement('div');
       actionMenu.className = 'action-menu';
 
-      const item = itemsToShow[this.selectedIndex];
       const actions = this.getAvailableActions(item, player);
 
       actions.forEach((act) => {

@@ -398,6 +398,14 @@ body {
   color: #ffffff;
 }
 
+.inventory-desc {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #aaccff;
+  border-top: 1px solid #4a5568;
+  line-height: 1.4;
+}
+
 .action-menu {
   display: flex;
   flex-wrap: wrap;
