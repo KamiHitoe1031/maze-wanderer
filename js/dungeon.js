@@ -147,6 +147,8 @@ export class Dungeon {
     this.floor = floor;
     this.rng = rng;
     this.theme = theme;
+    this.width = MAP_WIDTH;
+    this.height = MAP_HEIGHT;
     this.map = this.createEmptyMap();
     this.rooms = [];
     this.stairsPos = null;
