@@ -1,7 +1,7 @@
 # 引継ぎ資料 - 迷境の旅人
 
 ## 更新日時
-2026-02-18
+2026-02-21
 
 ## プロジェクト概要
 風来のシレン風ターン制ローグライクRPGをHTML + vanilla JavaScriptで実装するプロジェクト。
@@ -16,24 +16,15 @@ Cloudflare Pages（`main` ブランチへのpushで自動デプロイ）
 
 ## 現在の状態
 
-### 実装進捗: Phase 1〜4 ほぼ完了
+### 実装進捗: Phase 1〜4 完了、Phase 5 部分実装
 
 Phase 1（MVP）〜Phase 4（上級システム）の主要機能がすべて `main` ブランチにマージ・デプロイ済み。
-ゲームとしてプレイ可能な状態。
+Phase 5（仕上げ）の一部機能（画像アセット・アニメーション・UI改善）も実装済み。
 
 ### ブランチ状況
 ```
 main          ← 全機能マージ済み（本番環境、Cloudflare Pagesデプロイ対象）
-phase2/items  ← 作業ブランチ（mainと同期済み）
-```
-
-### 直近のコミット（main）
-```
-582f66d fix: ちから回復・モンスター視界・向き変更・中断セーブ黒画面を修正
-190b0f8 feat: 町画面をCanvas歩行型マップに変更
-c697ffc feat: Supabaseクラウドセーブ・ログイン機能を実装
-e248255 feat: 中断セーブ・再開機能を実装
-7633e75 feat: ステータスバーに装備・攻撃力・防御力を常時表示
+phase2/items  ← 古い作業ブランチ（mainより大幅に遅れている。使用しない）
 ```
 
 ---
@@ -78,16 +69,14 @@ e248255 feat: 中断セーブ・再開機能を実装
 - 統計情報（倒したモンスター数・拾ったアイテム数・最高到達階）
 
 ### Phase 5 相当（部分実装済み）
-- エフェクトアニメーション（スプライトシートベース）
+- エフェクトアニメーション（スプライトシートベース、12種）
 - ミニマップ（サイドパネル上部、プレイヤー中心スクロール）
 - 画像アセット80枚以上（モンスター・アイテム・エフェクト・キャラクター）
+- 町タイル画像8枚 + NPC画像2枚（Gemini API生成）
+- 町アニメーション（木の揺れ、水の波紋、花の揺れ、キャラ呼吸）
 - サウンドシステム（BGM/SE、MP3、ミュート切替）
-
-### 直近の修正 (582f66d)
-- **ちから回復**: 罠/モンスターによるちから低下が10ターンで各1ポイントずつ自動回復
-- **モンスター視界**: 別の部屋のモンスターは非表示（見通しの巻物/腕輪使用時のみ表示）
-- **向き変更**: Ctrl+方向キーで向きのみ変更（ターン消費なし）
-- **中断セーブ黒画面**: ダンジョンのthemeが未保存で復帰時に黒画面になるバグを修正
+- アイテム説明文表示（識別済み/未識別対応）
+- 未識別アイテムのビジュアル区別（紫色+イタリック+「?」マーク）
 
 ---
 
@@ -102,43 +91,49 @@ O:\AI_\Claudecode\不思議のダンジョン\
 ├── .gitignore
 ├── index.html             # エントリーポイント
 ├── css/
-│   └── style.css          # スタイルシート（942行）
+│   └── style.css          # スタイルシート
+├── secrets/               # APIキー（.gitignoreで除外）
+├── scripts/
+│   ├── generate_town_assets.py    # Gemini API画像生成
+│   ├── generate_assets.py         # Gemini APIモンスター/アイテム画像生成
+│   ├── generate_sounds.py         # サウンド生成
+│   └── create_spritesheets.py     # プログラムによるスプライトシート生成
 ├── assets/
-│   ├── characters/        # player.png, shopkeeper.png
-│   ├── monsters/          # 40種以上のモンスターPNG
-│   ├── items/             # 武器・盾・消費アイテムPNG
-│   ├── effects/           # エフェクトアニメーション（スプライトシート）
-│   ├── tiles/             # タイル画像（未作成、フォールバック描画で動作）
+│   ├── characters/        # player.png, shopkeeper.png, warehouse_keeper.png, dungeon_guide.png + idle sheets
+│   ├── monsters/          # 55種以上のモンスターPNG
+│   ├── items/             # 武器・盾・消費アイテムPNG（83ファイル）
+│   ├── effects/           # エフェクトアニメーション（スプライトシート12種）
+│   ├── tiles/             # ダンジョン・町タイル画像 + スプライトシート
 │   ├── ui/                # UI画像（未作成）
 │   └── sounds/            # BGM/SE（MP3、20ファイル以上）
 └── js/
     ├── main.js            # ゲーム初期化・シーン管理・ゲームループ
-    ├── game.js            # ゲーム状態管理・ターン処理・中断セーブ復元
-    ├── dungeon.js         # ダンジョン生成（BSP法）
+    ├── game.js            # ゲーム状態管理・ターン処理・識別システム
+    ├── dungeon.js         # ダンジョン生成（BSP法）、width/heightプロパティ付き
     ├── player.js          # プレイヤー状態・ちからデバフ回復
-    ├── monster.js         # モンスターAI・特殊能力（45種）
+    ├── monster.js         # モンスターAI・特殊能力（60+種）
     ├── combat.js          # ダメージ計算・戦闘処理
     ├── item.js            # アイテム生成・全効果適用
     ├── trap.js            # 罠配置・発動処理
-    ├── renderer.js        # Canvas描画・視界管理（explored/visible分離）
+    ├── renderer.js        # Canvas描画・視界管理（explored/visible分離）・アニメーション
     ├── minimap.js         # ミニマップ描画（プレイヤー中心）
     ├── input.js           # キーボード入力（Ctrl+方向=向き変更対応）
-    ├── ui.js              # UI管理（インベントリ・メッセージ・ステータスバー）
+    ├── ui.js              # UI管理（インベントリ・メッセージ・ステータスバー・アイテム説明文）
     ├── save.js            # ローカルセーブ・中断セーブ（localStorage）
     ├── cloud-save.js      # Supabaseクラウドセーブ（REST API直接呼出し）
     ├── scene-manager.js   # シーン管理（TITLE / TOWN / DUNGEON）
-    ├── town.js            # 町画面（Canvas歩行型）
+    ├── town.js            # 町画面（Canvas歩行型、アニメーションループ付き）
     ├── town-map.js        # 町マップデータ（30x22固定、NPC配置）
     ├── sound-manager.js   # サウンド管理（BGM/SE、Web Audio API）
     ├── rng.js             # シード付き乱数（xorshift128）
-    ├── sprite-manager.js  # スプライト管理（画像/フォールバック/アニメーション）
+    ├── sprite-manager.js  # スプライト管理（画像/フォールバック/タイルアニメ/キャラアイドル）
     └── data/
-        ├── sprites.js     # 全スプライト定義（imagePath + フォールバック）
+        ├── sprites.js     # 全スプライト定義 + ANIMATED_TILES/ANIMATED_CHARS Set
         ├── config.js      # ゲーム設定定数
         ├── dungeons.js    # ダンジョン定義（3ダンジョン + ショップ品揃え）
-        ├── monsters.js    # モンスターデータ（45種）
-        ├── weapons.js     # 武器データ（11種）
-        ├── shields.js     # 盾データ（10種）
+        ├── monsters.js    # モンスターデータ（60+種、3ダンジョン対応）
+        ├── weapons.js     # 武器データ（30+種）
+        ├── shields.js     # 盾データ（13+種）
         ├── grasses.js     # 草データ（17種 + 仮名テーブル）
         ├── scrolls.js     # 巻物データ（16種 + 仮名テーブル）
         ├── wands.js       # 杖データ（+ 仮名テーブル）
@@ -182,7 +177,7 @@ TITLE（タイトル画面）
   ├── はじめから → TOWN
   └── つづきから → DUNGEON（中断セーブ復元）
 
-TOWN（町画面 - Canvas歩行型）
+TOWN（町画面 - Canvas歩行型、アニメーションループ常時稼働）
   ├── 道具屋NPC → ショップオーバーレイ（売買）
   ├── 倉庫番NPC → 倉庫オーバーレイ（預入/持出）
   └── 冒険者ギルドNPC → ダンジョン選択 → DUNGEON
@@ -197,42 +192,57 @@ DUNGEON（ダンジョン探索）
 ### 視界システム（renderer.js）
 - **`dungeon.explored[y][x]`**: 永続的な探索済みフラグ。一度見たタイル・アイテムは表示し続ける
 - **`renderer.visible[y][x]`**: 現在ターンの可視範囲。毎ターンリセット。モンスター表示に使用
-- **`renderer.clairvoyant`**: 見通し状態（見通しの巻物 or 千里眼の腕輪）。trueなら全探索済みマスのモンスターを表示
+- **`renderer.clairvoyant`**: 見通し状態。trueなら全探索済みマスのモンスターを表示
 
-### ちからデバフ回復（player.js）
-- `player.strengthDebuffs[]`: 各デバフは `{ turnsRemaining: 10 }` を持つ
-- 罠/モンスターでちからが下がると、10ターン後に各1ポイントずつ自動回復
-- `tickStrengthDebuffs()` が毎ターン呼ばれ、期限切れのデバフ分を回復
+### アニメーションシステム（sprite-manager.js）
+- **`animTimestamp`**: グローバルアニメーション時計（`tick(deltaMs)` で加算）
+- **`drawAnimatedTile()`**: 静止画のソース矩形を1-2pxずらして揺れ効果（木・水・花）
+- **`drawCharIdle()`**: 1px上下動で呼吸モーション（プレイヤー・NPC）
+- **`ANIMATED_TILES` Set**: アニメーション対象タイルキー（sprites.js）
+- **`ANIMATED_CHARS` Set**: アニメーション対象キャラキー（sprites.js）
 
-### クラウドセーブ（cloud-save.js）
-- Supabase REST API を `fetch()` で直接呼び出し（外部ライブラリ不使用）
-- ユーザーID + パスワードでメール認証（`{userId}@maze-wanderer.game`）
-- アクセストークンの自動リフレッシュ対応
-- 永続セーブ + 中断セーブの両方をクラウド同期
+### 町アニメーション（town.js）
+- `_startTownAnimLoop()` で requestAnimationFrame ループ開始
+- ~15fpsで `spriteManager.tick()` → `render()` を繰り返し
+- シーン退出時に `_animLoopActive = false` でループ停止
 
-### 中断セーブ（save.js）
-- ダンジョン中のゲーム状態全体をlocalStorageに保存
-- プレイヤー・ダンジョン・モンスター・アイテム・罠・RNG状態をシリアライズ
-- ロード成功後に削除（ローグライクの1回限り中断セーブ）
-- **注意**: `dungeon.theme` を保存・復元する（未対応だと黒画面バグ）
+### 未識別システム（game.js）
+- 対象カテゴリ: 草・巻物・杖・壺・腕輪
+- `fakeNameMap`: ゲーム開始時にランダムに仮名を割り当て
+- `identifiedMap`: 使用時や鑑定の巻物で識別
+- `getDisplayName()`: 未識別なら仮名、識別済みなら本名を返す
+- `isIdentified()`: 武器・盾・食料・矢・金は常にtrue
+
+### インベントリUI（ui.js）
+- アイテム選択時に `.inventory-desc` で説明文を表示
+- 未識別アイテムは `.unidentified` クラス（紫色+イタリック+「?」）
+- 武器/盾は基礎ステータス（攻撃力/防御力/印スロット）も表示
+
+### 画像生成（scripts/）
+- `generate_town_assets.py`: Gemini API で画像生成。APIキーは `secrets/api-keys.secrets.md` から読み取り
+- `generate_assets.py`: Gemini API でモンスター・アイテム画像生成
+- `create_spritesheets.py`: 静止画から wave_distort, vertical_shift でスプライトシート生成
+- **重要**: `resize_to_target()` は中心クロップ後リサイズ（APIが縦長画像を返すため）
 
 ---
 
 ## 既知の課題・TODO
 
 ### 未実装・改善候補
-- タイル画像アセットが未作成（`assets/tiles/` は空、フォールバック描画で動作中）
+- ダンジョンタイル画像（`assets/tiles/wall.png`, `floor.png`, `stairs.png` 等）が未作成（フォールバック描画で動作中）
+  - 町タイル画像は生成済み
 - UI画像アセットが未作成（`assets/ui/` は空）
 - タッチ/クリック操作（モバイル対応）
 - レスポンシブ対応
 - バランス調整（テストプレイベース）
 - 店の泥棒システム（店主追跡は未実装）
-- アイテムの呪いシステム
+- アイテムの呪いシステム（部分実装）
+- ゲームオーバー画面・クリア画面のリッチ化
 
-### 画像アセット関連
-- **画像を置くだけで自動切替**: SpriteManagerが `imagePath` の画像を非同期ロード、失敗時はフォールバック
-- 既にモンスター40種・アイテム25種・エフェクト10種・キャラクター2種の画像が配置済み
-- 詳細は `ASSET_SPEC.md` 参照
+### 3D化プロジェクト（別PJ）
+- `O:\AI_\Claudecode\meikyo-3d-docs\` に設計書一式を作成済み
+- Three.js + Vite で3D化する場合の全ドキュメント
+- 本プロジェクトのゲームロジック（~4,800行）をそのまま再利用可能
 
 ---
 
@@ -268,5 +278,8 @@ debug.spawnMonster('fire_dragon')       // 火竜を召喚
 3. **spec.mdの計算式を遵守** — ダメージ計算、経験値、レベルアップ等
 4. **中断セーブでdungeon.themeを保存** — 忘れると復帰時に黒画面になる
 5. **visible配列とexplored配列を混同しない** — モンスター表示は`visible`、タイル/アイテムは`explored`
-6. **外部ライブラリ一切不使用** — vanilla JS + ES Modules のみ
-7. **Cloudflare Pages自動デプロイ** — `main` ブランチにpushすれば自動反映
+6. **Dungeon.width/heightプロパティ** — コンストラクタで `MAP_WIDTH`/`MAP_HEIGHT` を設定済み。renderer.jsがこれを参照
+7. **外部ライブラリ一切不使用** — vanilla JS + ES Modules のみ
+8. **Cloudflare Pages自動デプロイ** — `main` ブランチにpushすれば自動反映
+9. **APIキーはsecrets/に保存** — `secrets/` と `*.secrets.md` は `.gitignore` で除外済み。絶対にコミットしない
+10. **Gemini画像生成時は中心クロップ** — APIが縦長画像を返すため、正方形にクロップしてからリサイズする
